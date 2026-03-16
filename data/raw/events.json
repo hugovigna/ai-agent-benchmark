@@ -1,7 +1,0 @@
-[
-    {"id": 101, "timestamp": "2024-01-15T16:00:00", "value": 33.7, "category": "A", "event_type": "click"},
-    {"id": 102, "timestamp": "2024-01-15T16:05:00", "value": 128.4, "category": "B", "event_type": "purchase"},
-    {"id": 103, "timestamp": "2024-01-15T16:10:00", "value": null, "category": "C", "event_type": "view"},
-    {"id": 104, "timestamp": "2024-01-15T16:15:00", "value": 67.9, "category": "A", "event_type": "click"},
-    {"id": 105, "timestamp": null, "value": 234.5, "category": "B", "event_type": "purchase"}
-]
