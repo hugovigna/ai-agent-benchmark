@@ -1,14 +1,30 @@
-"""Validation script for Challenge 4: Checkpointing System."""
+"""Validation script for Challenge 4: Checkpointing System.
+
+CE FICHIER : Vérifie que l'agent a bien ajouté un système de checkpointing.
+STRATÉGIE : On lit tous les fichiers Python dans src/ et on cherche
+des mots-clés spécifiques (save, checkpoint, resume, cleanup, force...).
+C'est une validation par "pattern matching" sur le code, pas par exécution.
+"""
 
 import ast
 import os
 import sys
 
 
+# =============================================================================
+# CHECK 1 : Un module/classe de checkpointing existe
+# =============================================================================
 def check_checkpoint_module():
-    """Check that a checkpoint module/class exists."""
+    """Vérifie qu'il existe du code de checkpointing.
+
+    Deux approches acceptées par l'agent :
+    a) Créer un fichier séparé src/checkpoint.py (ou src/checkpointer.py)
+    b) Ajouter la logique directement dans src/long_pipeline.py
+
+    On cherche d'abord un fichier dédié, sinon on vérifie long_pipeline.py.
+    """
     issues = []
-    # Look for checkpoint-related files
+    # Cherche des fichiers dont le nom contient "checkpoint"
     checkpoint_files = []
     for root, dirs, files in os.walk("src"):
         for f in files:
@@ -16,7 +32,7 @@ def check_checkpoint_module():
                 checkpoint_files.append(os.path.join(root, f))
 
     if not checkpoint_files:
-        # Check if checkpointing is added inline in long_pipeline.py
+        # Pas de fichier dédié → vérifie si c'est intégré dans long_pipeline.py
         if os.path.exists("src/long_pipeline.py"):
             with open("src/long_pipeline.py", "r") as f:
                 content = f.read()
@@ -27,8 +43,16 @@ def check_checkpoint_module():
     return issues
 
 
+# =============================================================================
+# CHECK 2 : Les checkpoints sont sauvegardés
+# =============================================================================
 def check_save_checkpoint():
-    """Check that checkpoints are saved after each step."""
+    """Vérifie qu'il y a une logique de sauvegarde de checkpoint.
+
+    Cherche :
+    - Le mot "save" ET le mot "checkpoint" quelque part dans le code
+    - L'utilisation de "json" (pour la sérialisation du context dict)
+    """
     issues = []
     py_files = []
     for root, dirs, files in os.walk("src"):
@@ -36,6 +60,7 @@ def check_save_checkpoint():
             if f.endswith(".py"):
                 py_files.append(os.path.join(root, f))
 
+    # Concatène tout le code Python dans une seule string pour chercher
     all_content = ""
     for pf in py_files:
         with open(pf, "r") as f:
@@ -44,15 +69,23 @@ def check_save_checkpoint():
     if "save" not in all_content.lower() or "checkpoint" not in all_content.lower():
         issues.append("No save_checkpoint or similar function found")
 
-    # Check for JSON serialization
+    # Le context dict doit être sérialisé en JSON pour être persisté sur disque
     if "json" not in all_content:
         issues.append("No JSON serialization detected for checkpoints")
 
     return issues
 
 
+# =============================================================================
+# CHECK 3 : La logique de reprise existe
+# =============================================================================
 def check_resume_logic():
-    """Check that resume/recovery logic exists."""
+    """Vérifie que long_pipeline.py a une logique de reprise.
+
+    Cherche des mots-clés comme "resume", "recover", "restore",
+    "load_checkpoint", "last_step", "completed_step", "skip".
+    Au moins un de ces mots doit être présent.
+    """
     issues = []
     pipeline_path = "src/long_pipeline.py"
     if not os.path.exists(pipeline_path):
@@ -61,6 +94,7 @@ def check_resume_logic():
     with open(pipeline_path, "r") as f:
         content = f.read()
 
+    # Liste de mots-clés associés à la logique de reprise
     resume_keywords = ["resume", "recover", "restore", "load_checkpoint", "last_step",
                         "completed_step", "skip"]
     if not any(kw in content.lower() for kw in resume_keywords):
@@ -69,8 +103,16 @@ def check_resume_logic():
     return issues
 
 
+# =============================================================================
+# CHECK 4 : Les checkpoints sont nettoyés après succès
+# =============================================================================
 def check_cleanup():
-    """Check that checkpoints are cleaned up after success."""
+    """Vérifie que les fichiers de checkpoint sont supprimés après un run réussi.
+
+    Sans nettoyage, les vieux checkpoints s'accumulent sur le disque
+    et pourraient interférer avec les prochains runs.
+    Cherche des mots-clés comme "clean", "remove", "delete", "unlink".
+    """
     issues = []
     py_files = []
     for root, dirs, files in os.walk("src"):
@@ -90,8 +132,16 @@ def check_cleanup():
     return issues
 
 
+# =============================================================================
+# CHECK 5 : Option de force restart
+# =============================================================================
 def check_force_restart():
-    """Check that a force restart option exists."""
+    """Vérifie qu'il existe une option pour ignorer les checkpoints.
+
+    Parfois on veut repartir de zéro même s'il y a un checkpoint
+    (ex: les données source ont changé, on veut un fresh run).
+    L'agent doit ajouter un paramètre force_restart=True ou similaire.
+    """
     issues = []
     pipeline_path = "src/long_pipeline.py"
     if not os.path.exists(pipeline_path):
@@ -108,8 +158,11 @@ def check_force_restart():
     return issues
 
 
+# =============================================================================
+# CHECK 6 : Syntaxe Python valide
+# =============================================================================
 def check_syntax():
-    """Check all Python files are syntactically valid."""
+    """Vérifie que tous les fichiers Python dans src/ sont syntaxiquement valides."""
     issues = []
     for root, dirs, files in os.walk("src"):
         for f in files:
@@ -124,6 +177,9 @@ def check_syntax():
     return issues
 
 
+# =============================================================================
+# ORCHESTRATEUR DE VALIDATION
+# =============================================================================
 def main():
     print("=" * 60)
     print("Challenge 4 Validation: Checkpointing System")
