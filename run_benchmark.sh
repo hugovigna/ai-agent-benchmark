@@ -25,7 +25,7 @@
 #   - Pas de session Claude interactive ouverte (sinon conflit)
 # =============================================================================
 
-set -e  # Arrêter le script à la première erreur
+set +e  # On ne quitte PAS à la première erreur (les validateurs retournent exit 1 = FAIL, c'est normal)
 
 # --- Argument 1 : numéro du challenge (1-5 ou "all") ---
 CHALLENGE=$1
@@ -103,9 +103,11 @@ run_challenge() {
 # =============================================================================
 reset_branch() {
     local branch=$1
-    git checkout "$branch" 2>/dev/null
-    git checkout -- . 2>/dev/null  # Annule les modifications non commitées
-    git clean -fd 2>/dev/null      # Supprime les fichiers non trackés
+    echo -e "${BLUE}Resetting branch $branch...${NC}"
+    git checkout "$branch" 2>&1 || true
+    git checkout -- . 2>&1 || true    # Annule les modifications non commitées
+    git clean -fd 2>&1 || true        # Supprime les fichiers non trackés
+    echo -e "${BLUE}Branch reset done.${NC}"
 }
 
 # =============================================================================
