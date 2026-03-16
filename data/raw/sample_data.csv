@@ -1,3 +1,17 @@
+# Ce fichier CSV contient des données d'exemple pour tester le pipeline.
+# VOLONTAIREMENT IMPARFAIT pour tester la robustesse du pipeline :
+#   - Ligne 3 : "value" est vide (champ manquant → devrait être invalidé)
+#   - Ligne 6 : "value" est "N/A" (pas un nombre → nettoyage nécessaire)
+#   - Ligne 9 : "timestamp" est vide (champ requis manquant → invalide)
+# Ces cas permettent de vérifier que le pipeline gère bien les données sales.
+#
+# Colonnes :
+#   id        : identifiant unique du record
+#   timestamp : date/heure de l'événement (format ISO 8601)
+#   value     : valeur numérique associée à l'événement
+#   category  : catégorie métier (A, B ou C)
+#   name      : nom du projet/service
+#   region    : zone géographique (EU, US, APAC)
 id,timestamp,value,category,name,region
 1,2024-01-15T10:30:00,42.5,A,Alpha Project,EU
 2,2024-01-15T11:00:00,87.3,B,Beta Service,US

@@ -1,21 +1,50 @@
 #!/bin/bash
+# =============================================================================
 # AI Agent Benchmark Runner
-# Usage: ./run_benchmark.sh <challenge_number> [agent_command]
+# =============================================================================
+#
+# CE QUE FAIT CE SCRIPT :
+# Automatise le lancement d'un challenge et sa validation.
+# Il checkout la bonne branche, lance la commande de l'agent IA,
+# puis exécute le script de validation pour vérifier le résultat.
+#
+# USAGE :
+#   ./run_benchmark.sh <numéro_challenge> [commande_agent]
+#
+# EXEMPLES :
+#   ./run_benchmark.sh 2                        # Juste voir les consignes
+#   ./run_benchmark.sh 2 "claude-code solve"    # Lancer un agent IA dessus
+#   ./run_benchmark.sh all "mon_agent.sh"       # Lancer tous les challenges
+# =============================================================================
 
-set -e
+set -e  # Arrêter le script à la première erreur
 
+# --- Argument 1 : numéro du challenge (1-5 ou "all") ---
 CHALLENGE=$1
+
+# --- Argument 2 : commande pour lancer l'agent IA (optionnel) ---
+# Si pas fourni, affiche juste un message
 AGENT_CMD=${2:-"echo 'No agent command provided'"}
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# --- Couleurs pour l'affichage dans le terminal ---
+RED='\033[0;31m'      # Rouge = échec
+GREEN='\033[0;32m'    # Vert = succès
+YELLOW='\033[1;33m'   # Jaune = en cours
+NC='\033[0m'          # Reset couleur (No Color)
 
 echo "=========================================="
 echo " AI Agent Benchmark"
 echo "=========================================="
 
+# =============================================================================
+# FONCTION : run_challenge
+# Lance un challenge complet : checkout branche → agent → validation
+#
+# Paramètres :
+#   $1 = numéro du challenge (ex: 2)
+#   $2 = nom de la branche git (ex: "challenge/hardcoded-creds")
+#   $3 = chemin du script de validation (ex: "validate_challenge2.py")
+# =============================================================================
 run_challenge() {
     local num=$1
     local branch=$2
@@ -24,21 +53,26 @@ run_challenge() {
     echo -e "\n${YELLOW}Challenge $num: Starting...${NC}"
     echo "Branch: $branch"
 
-    # Checkout the challenge branch
+    # --- Étape 1 : Se placer sur la branche du challenge ---
+    # Le 2>/dev/null masque les messages de git checkout
     git checkout "$branch" 2>/dev/null
 
-    # Record start time
+    # --- Étape 2 : Chronomètre - début ---
+    # date +%s = timestamp Unix en secondes (pour mesurer la durée)
     local start_time=$(date +%s)
 
-    # Run the agent (user provides the command)
+    # --- Étape 3 : Lancer l'agent IA ---
+    # eval exécute la commande passée en string
+    # C'est ici que l'agent IA fait son travail (modifier les fichiers, etc.)
     echo "Running agent..."
     eval "$AGENT_CMD"
 
-    # Record end time
+    # --- Étape 4 : Chronomètre - fin ---
     local end_time=$(date +%s)
-    local elapsed=$((end_time - start_time))
+    local elapsed=$((end_time - start_time))  # Durée en secondes
 
-    # Run validation
+    # --- Étape 5 : Valider le résultat ---
+    # Le script Python retourne exit code 0 (succès) ou 1 (échec)
     echo -e "\nRunning validation..."
     if python3 "$validator" 2>&1; then
         echo -e "${GREEN}Challenge $num: PASSED (${elapsed}s)${NC}"
@@ -49,8 +83,13 @@ run_challenge() {
     fi
 }
 
+# =============================================================================
+# DISPATCH : quel challenge lancer selon l'argument $1
+# =============================================================================
 case $CHALLENGE in
     1)
+        # Le challenge 1 (merge conflict) est spécial : il faut merger
+        # deux branches manuellement, pas juste checkout une branche
         echo "Challenge 1: Merge Conflict Resolution"
         echo "Manual setup required:"
         echo "  git merge feature/update-config feature/refactor-config"
@@ -69,10 +108,14 @@ case $CHALLENGE in
         run_challenge 5 "challenge/data-quality" "validate_challenge5.py"
         ;;
     all)
+        # --- Mode "all" : lance les challenges 2 à 5 en séquence ---
+        # (Le challenge 1 est exclu car il nécessite un setup manuel)
         echo "Running all challenges (2-5)..."
         passed=0
         failed=0
         for i in 2 3 4 5; do
+            # Tableaux avec les branches et validateurs pour chaque challenge
+            # L'index 0 est vide car les challenges commencent à 1
             branches=("" "challenge/hardcoded-creds" "challenge/monolith-pipeline" "challenge/add-checkpointing" "challenge/data-quality")
             validators=("" "validate_challenge2.py" "validate_challenge3.py" "validate_challenge4.py" "validate_challenge5.py")
             if run_challenge $i "${branches[$((i-1))]}" "${validators[$((i-1))]}"; then
@@ -81,11 +124,13 @@ case $CHALLENGE in
                 ((failed++))
             fi
         done
+        # --- Résumé final ---
         echo -e "\n=========================================="
         echo -e "Results: ${GREEN}$passed passed${NC}, ${RED}$failed failed${NC}"
         echo "=========================================="
         ;;
     *)
+        # --- Message d'aide si argument invalide ---
         echo "Usage: $0 <1|2|3|4|5|all> [agent_command]"
         echo ""
         echo "Challenges:"
