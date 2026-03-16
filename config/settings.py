@@ -1,17 +1,20 @@
 """Configuration settings for the data pipeline."""
 
 DATABASE = {
-    "host": "localhost",
+    "host": "prod-db.company.internal",
     "port": 5432,
-    "name": "analytics_db",
+    "name": "analytics_prod",
     "schema": "public",
+    "pool_size": 10,
+    "max_overflow": 20,
 }
 
 PIPELINE = {
-    "batch_size": 1000,
-    "max_retries": 3,
-    "timeout": 300,
-    "log_level": "INFO",
+    "batch_size": 5000,
+    "max_retries": 5,
+    "timeout": 600,
+    "log_level": "WARNING",
+    "enable_profiling": True,
 }
 
 STORAGE = {
