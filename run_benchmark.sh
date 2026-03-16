@@ -5,16 +5,24 @@
 #
 # CE QUE FAIT CE SCRIPT :
 # Automatise le lancement d'un challenge et sa validation.
-# Il checkout la bonne branche, lance la commande de l'agent IA,
+# Il checkout la bonne branche, lance l'agent IA (Claude par défaut),
 # puis exécute le script de validation pour vérifier le résultat.
 #
 # USAGE :
-#   ./run_benchmark.sh <numéro_challenge> [commande_agent]
+#   ./run_benchmark.sh <numéro_challenge>                    # Avec Claude (défaut)
+#   ./run_benchmark.sh <numéro_challenge> "autre_agent.sh"   # Avec un autre agent
+#   ./run_benchmark.sh all                                   # Tous les challenges
 #
 # EXEMPLES :
-#   ./run_benchmark.sh 2                        # Juste voir les consignes
-#   ./run_benchmark.sh 2 "claude-code solve"    # Lancer un agent IA dessus
-#   ./run_benchmark.sh all "mon_agent.sh"       # Lancer tous les challenges
+#   ./run_benchmark.sh 2                          # Challenge 2 avec Claude
+#   ./run_benchmark.sh all                        # Tous les challenges avec Claude
+#   ./run_benchmark.sh 3 "aider --message 'Lis TASK.md et résous le challenge'"
+#   ./run_benchmark.sh 5 "copilot-cli solve"
+#
+# PRÉREQUIS :
+#   - Claude CLI installé (brew install claude ou npm install -g @anthropic-ai/claude-code)
+#   - Être dans le repo git_test
+#   - Pas de session Claude interactive ouverte (sinon conflit)
 # =============================================================================
 
 set -e  # Arrêter le script à la première erreur
@@ -23,18 +31,21 @@ set -e  # Arrêter le script à la première erreur
 CHALLENGE=$1
 
 # --- Argument 2 : commande pour lancer l'agent IA (optionnel) ---
-# Si pas fourni, affiche juste un message
-AGENT_CMD=${2:-"echo 'No agent command provided'"}
+# Par défaut : Claude en mode non-interactif avec auto-accept de tous les outils
+DEFAULT_AGENT='claude -p "Lis TASK.md et résous le challenge décrit dedans. Modifie les fichiers nécessaires." --allowedTools "Edit,Write,Read,Glob,Grep,Bash"'
+AGENT_CMD=${2:-$DEFAULT_AGENT}
 
 # --- Couleurs pour l'affichage dans le terminal ---
 RED='\033[0;31m'      # Rouge = échec
 GREEN='\033[0;32m'    # Vert = succès
 YELLOW='\033[1;33m'   # Jaune = en cours
+BLUE='\033[0;34m'     # Bleu = info
 NC='\033[0m'          # Reset couleur (No Color)
 
 echo "=========================================="
 echo " AI Agent Benchmark"
 echo "=========================================="
+echo -e "${BLUE}Agent: ${AGENT_CMD}${NC}"
 
 # =============================================================================
 # FONCTION : run_challenge
@@ -50,37 +61,51 @@ run_challenge() {
     local branch=$2
     local validator=$3
 
-    echo -e "\n${YELLOW}Challenge $num: Starting...${NC}"
+    echo -e "\n${YELLOW}==========================================${NC}"
+    echo -e "${YELLOW}Challenge $num: Starting...${NC}"
     echo "Branch: $branch"
+    echo "Validator: $validator"
+    echo -e "${YELLOW}==========================================${NC}"
 
     # --- Étape 1 : Se placer sur la branche du challenge ---
-    # Le 2>/dev/null masque les messages de git checkout
     git checkout "$branch" 2>/dev/null
+    echo -e "${BLUE}On branch: $(git branch --show-current)${NC}"
 
     # --- Étape 2 : Chronomètre - début ---
-    # date +%s = timestamp Unix en secondes (pour mesurer la durée)
     local start_time=$(date +%s)
 
     # --- Étape 3 : Lancer l'agent IA ---
-    # eval exécute la commande passée en string
-    # C'est ici que l'agent IA fait son travail (modifier les fichiers, etc.)
-    echo "Running agent..."
+    echo -e "\n${BLUE}Running agent...${NC}"
     eval "$AGENT_CMD"
+    local agent_exit=$?
 
     # --- Étape 4 : Chronomètre - fin ---
     local end_time=$(date +%s)
-    local elapsed=$((end_time - start_time))  # Durée en secondes
+    local elapsed=$((end_time - start_time))
+
+    echo -e "\n${BLUE}Agent finished (exit code: $agent_exit, duration: ${elapsed}s)${NC}"
 
     # --- Étape 5 : Valider le résultat ---
-    # Le script Python retourne exit code 0 (succès) ou 1 (échec)
-    echo -e "\nRunning validation..."
+    echo -e "\n${BLUE}Running validation...${NC}"
     if python3 "$validator" 2>&1; then
-        echo -e "${GREEN}Challenge $num: PASSED (${elapsed}s)${NC}"
+        echo -e "\n${GREEN}>>> Challenge $num: PASSED (${elapsed}s) <<<${NC}"
         return 0
     else
-        echo -e "${RED}Challenge $num: FAILED (${elapsed}s)${NC}"
+        echo -e "\n${RED}>>> Challenge $num: FAILED (${elapsed}s) <<<${NC}"
         return 1
     fi
+}
+
+# =============================================================================
+# FONCTION : reset_branch
+# Remet la branche dans son état initial avant de lancer l'agent.
+# Important pour que chaque run parte d'un état propre.
+# =============================================================================
+reset_branch() {
+    local branch=$1
+    git checkout "$branch" 2>/dev/null
+    git checkout -- . 2>/dev/null  # Annule les modifications non commitées
+    git clean -fd 2>/dev/null      # Supprime les fichiers non trackés
 }
 
 # =============================================================================
@@ -91,9 +116,15 @@ case $CHALLENGE in
         # Le challenge 1 (merge conflict) est spécial : il faut merger
         # deux branches manuellement, pas juste checkout une branche
         echo "Challenge 1: Merge Conflict Resolution"
-        echo "Manual setup required:"
-        echo "  git merge feature/update-config feature/refactor-config"
-        echo "  Then let the agent resolve conflicts"
+        echo ""
+        echo "Ce challenge nécessite un setup manuel :"
+        echo "  1. git checkout main"
+        echo "  2. git merge feature/update-config    # OK, fast-forward"
+        echo "  3. git merge feature/refactor-config   # CONFLIT ici"
+        echo "  4. Lancer l'agent pour résoudre le conflit"
+        echo ""
+        echo "Ou en une commande :"
+        echo "  git checkout main && git merge feature/update-config && git merge feature/refactor-config; claude -p 'Résous le conflit de merge dans config/settings.py. Garde les valeurs de production ET les nouvelles sections monitoring/alerting.'"
         ;;
     2)
         run_challenge 2 "challenge/hardcoded-creds" "validate_challenge2.py"
@@ -109,36 +140,79 @@ case $CHALLENGE in
         ;;
     all)
         # --- Mode "all" : lance les challenges 2 à 5 en séquence ---
-        # (Le challenge 1 est exclu car il nécessite un setup manuel)
         echo "Running all challenges (2-5)..."
+        echo ""
         passed=0
         failed=0
+        total_start=$(date +%s)
+
+        # Tableaux indexés par numéro de challenge
+        branches=(
+            ""                              # index 0 (inutilisé)
+            ""                              # index 1 (challenge 1 = manuel)
+            "challenge/hardcoded-creds"     # index 2
+            "challenge/monolith-pipeline"   # index 3
+            "challenge/add-checkpointing"   # index 4
+            "challenge/data-quality"        # index 5
+        )
+        validators=(
+            ""                              # index 0
+            ""                              # index 1
+            "validate_challenge2.py"        # index 2
+            "validate_challenge3.py"        # index 3
+            "validate_challenge4.py"        # index 4
+            "validate_challenge5.py"        # index 5
+        )
+
+        results=()
         for i in 2 3 4 5; do
-            # Tableaux avec les branches et validateurs pour chaque challenge
-            # L'index 0 est vide car les challenges commencent à 1
-            branches=("" "challenge/hardcoded-creds" "challenge/monolith-pipeline" "challenge/add-checkpointing" "challenge/data-quality")
-            validators=("" "validate_challenge2.py" "validate_challenge3.py" "validate_challenge4.py" "validate_challenge5.py")
-            if run_challenge $i "${branches[$((i-1))]}" "${validators[$((i-1))]}"; then
+            # Reset la branche pour un état propre avant chaque challenge
+            reset_branch "${branches[$i]}"
+
+            if run_challenge $i "${branches[$i]}" "${validators[$i]}"; then
                 ((passed++))
+                results+=("${GREEN}  Challenge $i: PASSED${NC}")
             else
                 ((failed++))
+                results+=("${RED}  Challenge $i: FAILED${NC}")
             fi
         done
+
+        total_end=$(date +%s)
+        total_elapsed=$((total_end - total_start))
+
         # --- Résumé final ---
         echo -e "\n=========================================="
-        echo -e "Results: ${GREEN}$passed passed${NC}, ${RED}$failed failed${NC}"
+        echo " BENCHMARK RESULTS"
         echo "=========================================="
+        for r in "${results[@]}"; do
+            echo -e "$r"
+        done
+        echo "=========================================="
+        echo -e "Score: ${GREEN}$passed passed${NC} / ${RED}$failed failed${NC} (total: ${total_elapsed}s)"
+        echo "=========================================="
+
+        # Retour sur main
+        git checkout main 2>/dev/null
         ;;
     *)
         # --- Message d'aide si argument invalide ---
         echo "Usage: $0 <1|2|3|4|5|all> [agent_command]"
         echo ""
         echo "Challenges:"
-        echo "  1 - Merge Conflict Resolution"
-        echo "  2 - Replace Hardcoded Credentials"
-        echo "  3 - Refactor Monolith Pipeline"
-        echo "  4 - Add Checkpointing System"
-        echo "  5 - Data Quality Module"
-        echo "  all - Run challenges 2-5"
+        echo "  1   - Merge Conflict Resolution (setup manuel)"
+        echo "  2   - Replace Hardcoded Credentials"
+        echo "  3   - Refactor Monolith Pipeline"
+        echo "  4   - Add Checkpointing System"
+        echo "  5   - Data Quality Module"
+        echo "  all - Run challenges 2-5 en séquence"
+        echo ""
+        echo "Exemples:"
+        echo "  $0 2                    # Challenge 2 avec Claude (défaut)"
+        echo "  $0 all                  # Tous avec Claude"
+        echo '  $0 3 "aider --msg ..."  # Challenge 3 avec Aider'
+        echo ""
+        echo "Agent par défaut:"
+        echo "  $DEFAULT_AGENT"
         ;;
 esac
