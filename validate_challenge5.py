@@ -1,4 +1,18 @@
-"""Validation script for Challenge 5: Data Quality Module."""
+"""Validation script for Challenge 5: Data Quality Module.
+
+CE FICHIER : Le validateur le plus complexe du benchmark.
+Vérifie que l'agent a créé un module complet de data quality avec :
+  - Un profiler (calculs statistiques)
+  - Un générateur de rapport JSON
+  - Des quality gates (seuils bloquants)
+  - Un fichier de configuration externe
+  - De la détection d'anomalies
+
+STRATÉGIE DE VALIDATION :
+On combine la vérification de structure (fichiers existent ?),
+l'analyse AST (bonnes fonctions ?), et la recherche de mots-clés
+(concepts statistiques présents dans le code ?).
+"""
 
 import ast
 import json
@@ -6,16 +20,24 @@ import os
 import sys
 
 
+# Les 4 fichiers Python attendus dans le module data_quality
 EXPECTED_FILES = [
-    "src/data_quality/__init__.py",
-    "src/data_quality/profiler.py",
-    "src/data_quality/report.py",
-    "src/data_quality/quality_gate.py",
+    "src/data_quality/__init__.py",      # Point d'entrée du package
+    "src/data_quality/profiler.py",      # Calculs de profiling
+    "src/data_quality/report.py",        # Génération du rapport JSON
+    "src/data_quality/quality_gate.py",  # Vérification des seuils
 ]
 
 
+# =============================================================================
+# CHECK 1 : Structure du module
+# =============================================================================
 def check_module_structure():
-    """Check that the data_quality package exists with expected files."""
+    """Vérifie que le package src/data_quality/ existe avec les 4 fichiers.
+
+    Note : on ne vérifie pas config.py ici car c'est optionnel
+    (la config peut être chargée directement dans quality_gate.py).
+    """
     issues = []
     for filepath in EXPECTED_FILES:
         if not os.path.exists(filepath):
@@ -23,8 +45,19 @@ def check_module_structure():
     return issues
 
 
+# =============================================================================
+# CHECK 2 : Le profiler a les bonnes fonctionnalités
+# =============================================================================
 def check_profiler():
-    """Check profiler.py has required profiling functions."""
+    """Vérifie que profiler.py contient les concepts de profiling requis.
+
+    On cherche des mots-clés dans le code :
+    - "null" → détection des valeurs manquantes
+    - "unique" → comptage de la cardinalité
+    - "distribution" → calcul de la distribution statistique
+
+    On cherche aussi des fonctions statistiques (mean, median, std, etc.)
+    """
     path = "src/data_quality/profiler.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
@@ -32,18 +65,18 @@ def check_profiler():
         content = f.read()
 
     issues = []
+    # Concepts de profiling attendus
     required_concepts = {
-        "null": "null/missing value detection",
-        "unique": "cardinality/unique value counting",
-        "distribution": "distribution statistics (min/max/mean/std)",
+        "null": "null/missing value detection",         # Valeurs manquantes
+        "unique": "cardinality/unique value counting",  # Valeurs uniques
+        "distribution": "distribution statistics (min/max/mean/std)",  # Stats
     }
-    # Check for at least basic profiling concepts
     content_lower = content.lower()
     for keyword, description in required_concepts.items():
         if keyword not in content_lower and keyword.replace("_", " ") not in content_lower:
             issues.append(f"profiler.py: missing {description} (keyword: '{keyword}')")
 
-    # Check for statistical functions
+    # Fonctions statistiques (au moins une doit être présente)
     stat_keywords = ["mean", "median", "std", "min", "max", "average"]
     if not any(kw in content_lower for kw in stat_keywords):
         issues.append("profiler.py: no statistical calculations detected")
@@ -51,8 +84,14 @@ def check_profiler():
     return issues
 
 
+# =============================================================================
+# CHECK 3 : Le rapport JSON est généré
+# =============================================================================
 def check_report_generation():
-    """Check report.py generates JSON reports."""
+    """Vérifie que report.py :
+    1. Utilise le module json (pour générer le rapport)
+    2. A une fonction dont le nom contient "report" ou "generate"
+    """
     path = "src/data_quality/report.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
@@ -63,6 +102,7 @@ def check_report_generation():
     if "json" not in content:
         issues.append("report.py: no JSON handling detected")
 
+    # Extrait les noms de fonctions via AST
     tree = ast.parse(content)
     func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     if not any("report" in fn.lower() or "generate" in fn.lower() for fn in func_names):
@@ -71,8 +111,17 @@ def check_report_generation():
     return issues
 
 
+# =============================================================================
+# CHECK 4 : Les quality gates bloquent le pipeline
+# =============================================================================
 def check_quality_gates():
-    """Check quality_gate.py implements threshold checks."""
+    """Vérifie que quality_gate.py :
+    1. A une logique de vérification de seuils (threshold, limit, gate...)
+    2. Peut bloquer le pipeline (raise, error, fail...)
+
+    Un quality gate DOIT pouvoir stopper le pipeline — sinon c'est juste
+    un rapport informatif, pas un garde-fou.
+    """
     path = "src/data_quality/quality_gate.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
@@ -82,12 +131,12 @@ def check_quality_gates():
     issues = []
     content_lower = content.lower()
 
-    # Check for threshold checking
+    # Vérification de seuils
     threshold_keywords = ["threshold", "limit", "max_null", "completeness", "gate"]
     if not any(kw in content_lower for kw in threshold_keywords):
         issues.append("quality_gate.py: no threshold checking detected")
 
-    # Check for blocking/raising behavior
+    # Mécanisme de blocage (raise Exception, sys.exit, return error, etc.)
     block_keywords = ["raise", "error", "block", "fail", "reject", "exception"]
     if not any(kw in content_lower for kw in block_keywords):
         issues.append("quality_gate.py: no pipeline blocking mechanism detected")
@@ -95,8 +144,15 @@ def check_quality_gates():
     return issues
 
 
+# =============================================================================
+# CHECK 5 : Fichier de configuration des seuils
+# =============================================================================
 def check_config_file():
-    """Check that quality thresholds config file exists."""
+    """Vérifie qu'un fichier de config des seuils existe dans config/.
+
+    Accepte JSON ou YAML, avec plusieurs noms possibles.
+    Si c'est du JSON, on vérifie qu'il est parseable.
+    """
     config_paths = [
         "config/quality_thresholds.json",
         "config/quality_thresholds.yaml",
@@ -106,21 +162,31 @@ def check_config_file():
     ]
     for path in config_paths:
         if os.path.exists(path):
-            # Validate it's parseable
             if path.endswith(".json"):
                 try:
                     with open(path, "r") as f:
-                        json.load(f)
-                    return []
+                        json.load(f)  # Vérifie que le JSON est valide
+                    return []  # OK
                 except json.JSONDecodeError as e:
                     return [f"Config file {path} is not valid JSON: {e}"]
-            return []
+            return []  # YAML trouvé, on fait confiance
 
     return ["No quality thresholds config file found in config/"]
 
 
+# =============================================================================
+# CHECK 6 : Détection d'anomalies
+# =============================================================================
 def check_anomaly_detection():
-    """Check for anomaly detection capability."""
+    """Vérifie que le module contient une logique de détection d'anomalies.
+
+    Une anomalie = une valeur statistiquement anormale.
+    Méthodes courantes :
+    - Z-score : valeur à >3 écarts-types de la moyenne
+    - IQR : valeur hors [Q1 - 1.5*IQR, Q3 + 1.5*IQR]
+
+    On cherche des mots-clés liés à ces concepts dans tout le module.
+    """
     issues = []
     all_content = ""
     for root, dirs, files in os.walk("src/data_quality"):
@@ -130,6 +196,7 @@ def check_anomaly_detection():
                     all_content += fh.read()
 
     content_lower = all_content.lower()
+    # Mots-clés associés à la détection d'anomalies
     anomaly_keywords = ["anomal", "outlier", "zscore", "z_score", "std", "deviation",
                         "iqr", "interquartile"]
     if not any(kw in content_lower for kw in anomaly_keywords):
@@ -138,8 +205,11 @@ def check_anomaly_detection():
     return issues
 
 
+# =============================================================================
+# CHECK 7 : Syntaxe Python valide
+# =============================================================================
 def check_syntax():
-    """Check all Python files are syntactically valid."""
+    """Vérifie que tous les fichiers Python du module sont syntaxiquement valides."""
     issues = []
     for root, dirs, files in os.walk("src/data_quality"):
         for f in files:
@@ -154,6 +224,9 @@ def check_syntax():
     return issues
 
 
+# =============================================================================
+# ORCHESTRATEUR DE VALIDATION
+# =============================================================================
 def main():
     print("=" * 60)
     print("Challenge 5 Validation: Data Quality Module")
