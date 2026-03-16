@@ -1,21 +1,40 @@
-"""Validation script for Challenge 3: Pipeline Refactoring."""
+"""Validation script for Challenge 3: Pipeline Refactoring.
 
-import ast
+CE FICHIER : Vérifie automatiquement que l'agent a bien refactoré le pipeline.
+STRATÉGIE DE VALIDATION :
+  On utilise l'AST (Abstract Syntax Tree) de Python pour analyser le code
+  sans l'exécuter. On cherche si les bonnes fonctions existent dans les bons
+  fichiers, si le logging est présent, et si l'orchestrateur utilise les 3 modules.
+"""
+
+import ast       # Pour parser du Python et extraire les noms de fonctions
 import os
 import sys
 import importlib.util
 
 
+# Les 4 fichiers que l'agent doit créer
 EXPECTED_MODULES = [
-    "src/pipeline/__init__.py",
-    "src/pipeline/extract.py",
-    "src/pipeline/transform.py",
-    "src/pipeline/load.py",
+    "src/pipeline/__init__.py",    # Orchestrateur
+    "src/pipeline/extract.py",     # Extraction des données
+    "src/pipeline/transform.py",   # Transformation des données
+    "src/pipeline/load.py",        # Chargement / écriture des résultats
 ]
 
 
+# =============================================================================
+# CHECK 1 : Structure du package
+# =============================================================================
 def check_package_structure():
-    """Check that the pipeline package exists with expected modules."""
+    """Vérifie que :
+    - src/pipeline.py N'EXISTE PLUS (remplacé par le package)
+    - src/pipeline/ existe avec les 4 fichiers attendus
+
+    En Python, un "package" = un dossier avec un __init__.py.
+    Quand on fait "from src.pipeline import ...", Python cherche
+    soit src/pipeline.py soit src/pipeline/__init__.py.
+    Les deux ne peuvent pas coexister.
+    """
     issues = []
     if os.path.exists("src/pipeline.py"):
         issues.append("src/pipeline.py still exists (should be replaced by src/pipeline/)")
@@ -25,25 +44,46 @@ def check_package_structure():
     return issues
 
 
+# =============================================================================
+# CHECK 2 : Module extract.py
+# =============================================================================
 def check_extract_module():
-    """Check extract.py has file discovery and parsing functions."""
+    """Vérifie que extract.py contient des fonctions de découverte et parsing.
+
+    On parse le fichier avec ast et on extrait les noms de fonctions.
+    On cherche des noms comme "discover_files", "parse_csv", "read_sources", etc.
+    La vérification est souple : on cherche des mots-clés dans les noms.
+    """
     path = "src/pipeline/extract.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
     with open(path, "r") as f:
         content = f.read()
     tree = ast.parse(content)
+    # ast.walk parcourt tout l'arbre et FunctionDef = définition de fonction
     func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     issues = []
+    # Cherche une fonction de découverte de fichiers
     if not any("discover" in fn or "source" in fn or "find" in fn for fn in func_names):
         issues.append("extract.py: no file discovery function found")
+    # Cherche une fonction de parsing CSV/JSON
     if not any("csv" in fn.lower() or "parse" in fn.lower() or "read" in fn.lower() for fn in func_names):
         issues.append("extract.py: no CSV/JSON parsing function found")
     return issues
 
 
+# =============================================================================
+# CHECK 3 : Module transform.py
+# =============================================================================
 def check_transform_module():
-    """Check transform.py has cleaning and transformation functions."""
+    """Vérifie que transform.py a les 4 types de transformation attendus :
+    - dedup (déduplication)
+    - clean (nettoyage)
+    - valid (validation)
+    - enrich (enrichissement)
+
+    Cherche ces mots-clés dans les noms de fonctions.
+    """
     path = "src/pipeline/transform.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
@@ -52,6 +92,7 @@ def check_transform_module():
     tree = ast.parse(content)
     func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     issues = []
+    # On s'attend à une fonction par concept de transformation
     expected_concepts = ["dedup", "clean", "valid", "enrich"]
     for concept in expected_concepts:
         if not any(concept in fn.lower() for fn in func_names):
@@ -59,8 +100,14 @@ def check_transform_module():
     return issues
 
 
+# =============================================================================
+# CHECK 4 : Module load.py
+# =============================================================================
 def check_load_module():
-    """Check load.py has output writing functions."""
+    """Vérifie que load.py a des fonctions d'écriture de fichiers.
+
+    Cherche des noms comme "write_output", "save_results", "load_data", etc.
+    """
     path = "src/pipeline/load.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
@@ -74,8 +121,15 @@ def check_load_module():
     return issues
 
 
+# =============================================================================
+# CHECK 5 : Logging présent dans tous les modules
+# =============================================================================
 def check_logging_present():
-    """Check that logging is used in all modules."""
+    """Vérifie que chaque module utilise le logging Python.
+
+    Un bon pipeline doit logger ce qu'il fait pour le debugging
+    et le monitoring en production.
+    """
     issues = []
     for module_path in EXPECTED_MODULES:
         if not os.path.exists(module_path):
@@ -87,8 +141,16 @@ def check_logging_present():
     return issues
 
 
+# =============================================================================
+# CHECK 6 : L'orchestrateur utilise les 3 modules
+# =============================================================================
 def check_orchestrator():
-    """Check that __init__.py orchestrates the pipeline."""
+    """Vérifie que __init__.py importe et utilise extract, transform et load.
+
+    L'orchestrateur est le point d'entrée qui appelle les 3 modules
+    dans le bon ordre. Si il n'importe pas un module, la refactorisation
+    est incomplète.
+    """
     path = "src/pipeline/__init__.py"
     if not os.path.exists(path):
         return [f"MISSING: {path}"]
@@ -104,8 +166,11 @@ def check_orchestrator():
     return issues
 
 
+# =============================================================================
+# CHECK 7 : Validité syntaxique
+# =============================================================================
 def check_syntax():
-    """Check all Python files are syntactically valid."""
+    """Vérifie que tous les fichiers Python sont syntaxiquement valides."""
     issues = []
     for module_path in EXPECTED_MODULES:
         if not os.path.exists(module_path):
@@ -118,6 +183,9 @@ def check_syntax():
     return issues
 
 
+# =============================================================================
+# ORCHESTRATEUR DE VALIDATION
+# =============================================================================
 def main():
     print("=" * 60)
     print("Challenge 3 Validation: Pipeline Refactoring")
