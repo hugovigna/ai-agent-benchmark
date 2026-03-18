@@ -1,10 +1,4 @@
-"""
-Bug 4 : Code lent à vectoriser
-
-Ce module traite des données tabulaires avec des boucles Python naïves
-là où des opérations vectorisées pandas/numpy seraient bien plus rapides.
-L'objectif est de vectoriser le code pour passer sous un seuil de temps.
-"""
+"""Module de traitement de données tabulaires avec calculs statistiques."""
 
 import pandas as pd
 import numpy as np
@@ -27,7 +21,6 @@ def generate_test_data(n_rows=100_000):
 def compute_net_revenue(df):
     """Calcule le revenu net pour chaque ligne.
 
-    LENT: boucle Python ligne par ligne au lieu de vectoriser.
     Formule: price * quantity * (1 - discount_pct) * (1 + tax_rate)
     """
     net_revenues = []
@@ -44,10 +37,7 @@ def compute_net_revenue(df):
 
 
 def categorize_revenue(df):
-    """Catégorise chaque ligne en 'low', 'medium', 'high' selon le revenu net.
-
-    LENT: boucle Python avec if/elif au lieu de pd.cut ou np.where.
-    """
+    """Catégorise chaque ligne en 'low', 'medium', 'high' selon le revenu net."""
     categories = []
     for i in range(len(df)):
         rev = df.iloc[i]["net_revenue"]
@@ -63,10 +53,7 @@ def categorize_revenue(df):
 
 
 def compute_regional_stats(df):
-    """Calcule des stats par région.
-
-    LENT: boucle manuelle sur les régions au lieu de groupby.
-    """
+    """Calcule des stats par région."""
     regions = df["region"].unique()
     stats = {}
     for region in regions:
@@ -94,10 +81,7 @@ def compute_regional_stats(df):
 
 
 def compute_discount_impact(df):
-    """Calcule l'impact du discount sur le revenu par catégorie.
-
-    LENT: double boucle imbriquée (catégories × lignes).
-    """
+    """Calcule l'impact du discount sur le revenu par catégorie."""
     categories = df["category"].unique()
     impact = {}
     for cat in categories:
@@ -121,10 +105,7 @@ def compute_discount_impact(df):
 
 
 def run_analysis(n_rows=100_000):
-    """Point d'entrée — exécute toute l'analyse et retourne les résultats + timing.
-
-    OBJECTIF: doit tourner en moins de 2 secondes pour 100k lignes.
-    """
+    """Point d'entrée — exécute toute l'analyse et retourne les résultats + timing."""
     df = generate_test_data(n_rows)
 
     start = time.time()

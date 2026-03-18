@@ -1,10 +1,4 @@
-"""
-Bug 3 : Fonctions qui pointent vers des fichiers mal écrits
-
-Ce module charge et traite des fichiers de configuration et de données.
-Plusieurs chemins de fichiers sont mal construits (typos, mauvaise extension,
-mauvais séparateur de chemin).
-"""
+"""Module de chargement et traitement de fichiers de configuration et données."""
 
 import os
 import json
@@ -15,43 +9,30 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 
 def load_config():
-    """Charge la configuration depuis un fichier JSON.
-
-    BUG: le nom du fichier a une typo ('conifg' au lieu de 'config').
-    """
-    config_path = os.path.join(DATA_DIR, "conifg.json")  # BUG: typo 'conifg'
+    """Charge la configuration depuis un fichier JSON."""
+    config_path = os.path.join(DATA_DIR, "conifg.json")
     with open(config_path, "r") as f:
         return json.load(f)
 
 
 def load_reference_data():
-    """Charge les données de référence depuis un CSV.
-
-    BUG: mauvaise extension (.csv au lieu de .tsv, le fichier réel est un TSV).
-    """
-    ref_path = os.path.join(DATA_DIR, "reference.csv")  # BUG: le fichier est .tsv
+    """Charge les données de référence depuis un fichier tabulaire."""
+    ref_path = os.path.join(DATA_DIR, "reference.csv")
     with open(ref_path, "r") as f:
         reader = csv.DictReader(f)
         return list(reader)
 
 
 def load_mapping_table():
-    """Charge la table de mapping depuis un JSON.
-
-    BUG: utilise un double slash dans le chemin qui casse sous certains OS,
-    et le nom de fichier est 'mappings' (pluriel) au lieu de 'mapping'.
-    """
-    map_path = os.path.join(DATA_DIR, "mappings.json")  # BUG: 'mappings' au lieu de 'mapping'
+    """Charge la table de mapping depuis un JSON."""
+    map_path = os.path.join(DATA_DIR, "mappings.json")
     with open(map_path, "r") as f:
         return json.load(f)
 
 
 def save_results(results, filename="results"):
-    """Sauvegarde les résultats en JSON.
-
-    BUG: oubli de l'extension dans le chemin de sortie.
-    """
-    output_path = os.path.join(DATA_DIR, filename)  # BUG: manque '.json'
+    """Sauvegarde les résultats en JSON."""
+    output_path = os.path.join(DATA_DIR, filename)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)

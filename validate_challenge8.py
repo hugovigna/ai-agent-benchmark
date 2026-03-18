@@ -248,7 +248,7 @@ def validate_slow_code():
 
     elapsed = result.get("elapsed_seconds", 999)
     check(f"Performance < 2s (actual: {elapsed}s)", elapsed < 2.0,
-          f"{elapsed}s — vectoriser le code !")
+          f"{elapsed}s — trop lent")
 
     # Check correctness of results
     regional = result.get("regional_stats", {})
