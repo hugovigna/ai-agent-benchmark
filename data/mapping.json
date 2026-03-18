@@ -1,0 +1,6 @@
+{
+    "electronics": {"tax_code": "ELEC-01", "warehouse": "WH-A"},
+    "food": {"tax_code": "FOOD-02", "warehouse": "WH-B"},
+    "clothing": {"tax_code": "CLTH-03", "warehouse": "WH-C"},
+    "books": {"tax_code": "BOOK-04", "warehouse": "WH-D"}
+}

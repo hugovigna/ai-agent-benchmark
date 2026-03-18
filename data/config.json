@@ -1,0 +1,8 @@
+{
+    "version": "2.1",
+    "pipeline_name": "daily_etl",
+    "batch_size": 5000,
+    "timeout_seconds": 300,
+    "retry_count": 3,
+    "output_format": "json"
+}
