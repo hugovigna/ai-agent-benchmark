@@ -27,7 +27,7 @@
   └── requirements.txt          <- Dépendances Python du projet
 -->
 
-Ce repo contient **5 challenges** pour évaluer la capacité d'un agent IA à résoudre des problèmes courants en data engineering.
+Ce repo contient **8 challenges** pour évaluer la capacité d'un agent IA à résoudre des problèmes courants en data engineering.
 
 ## Challenges
 
@@ -46,6 +46,9 @@ Ce repo contient **5 challenges** pour évaluer la capacité d'un agent IA à r�
 | 3 | **Refactoring Pipeline Monolithique** | `challenge/monolith-pipeline` | ⭐⭐⭐ |
 | 4 | **Checkpointing Pipeline** | `challenge/add-checkpointing` | ⭐⭐⭐ |
 | 5 | **Module Qualité de Données** | `challenge/data-quality` | ⭐⭐⭐⭐ |
+| 6 | **Rétrodocumentation** | `challenge/retrodoc` | ⭐⭐ |
+| 7 | **Mapping Codebase** | `challenge/mapping` | ⭐⭐ |
+| 8 | **Debugging (4 bugs)** | `challenge/debugging` | ⭐⭐⭐ |
 
 ## Comment utiliser
 
@@ -114,6 +117,39 @@ git checkout challenge/add-checkpointing
 ```bash
 git checkout challenge/data-quality
 # Implémenter profiling + rapport JSON + seuils bloquants
+```
+
+### Challenge 6 — Rétrodocumentation
+<!--
+  SCÉNARIO : Le code fonctionne mais n'a aucune documentation.
+  L'agent doit ajouter des docstrings à toutes les fonctions, classes
+  et modules en suivant un template strict (Args, Returns, Raises).
+-->
+```bash
+git checkout challenge/retrodoc
+# Documenter 4 fichiers Python selon le template DOCSTRING_TEMPLATE.md
+```
+
+### Challenge 7 — Mapping Codebase
+<!--
+  SCÉNARIO : L'agent doit produire un fichier MAPPING.md qui cartographie
+  exhaustivement la codebase : modules, classes, fonctions, dépendances
+  internes et points d'entrée.
+-->
+```bash
+git checkout challenge/mapping
+# Produire un MAPPING.md complet de la codebase (6 modules, 7 classes, 11 fonctions)
+```
+
+### Challenge 8 — Debugging (4 bugs)
+<!--
+  SCÉNARIO : 4 fichiers contiennent chacun un type de bug différent :
+  erreur de type (list/array/Series), boucle infinie, chemins de fichiers
+  incorrects, et code lent à vectoriser. L'agent doit tous les corriger.
+-->
+```bash
+git checkout challenge/debugging
+# Corriger 4 types de bugs : type errors, boucles infinies, mauvais chemins, code lent
 ```
 
 ## Validation

@@ -140,9 +140,18 @@ case $CHALLENGE in
     5)
         run_challenge 5 "challenge/data-quality" "validate_challenge5.py"
         ;;
+    6)
+        run_challenge 6 "challenge/retrodoc" "validate_challenge6.py"
+        ;;
+    7)
+        run_challenge 7 "challenge/mapping" "validate_challenge7.py"
+        ;;
+    8)
+        run_challenge 8 "challenge/debugging" "validate_challenge8.py"
+        ;;
     all)
-        # --- Mode "all" : lance les challenges 2 à 5 en séquence ---
-        echo "Running all challenges (2-5)..."
+        # --- Mode "all" : lance les challenges 2 à 8 en séquence ---
+        echo "Running all challenges (2-8)..."
         echo ""
         passed=0
         failed=0
@@ -156,6 +165,9 @@ case $CHALLENGE in
             "challenge/monolith-pipeline"   # index 3
             "challenge/add-checkpointing"   # index 4
             "challenge/data-quality"        # index 5
+            "challenge/retrodoc"           # index 6
+            "challenge/mapping"            # index 7
+            "challenge/debugging"          # index 8
         )
         validators=(
             ""                              # index 0
@@ -164,10 +176,13 @@ case $CHALLENGE in
             "validate_challenge3.py"        # index 3
             "validate_challenge4.py"        # index 4
             "validate_challenge5.py"        # index 5
+            "validate_challenge6.py"        # index 6
+            "validate_challenge7.py"        # index 7
+            "validate_challenge8.py"        # index 8
         )
 
         results=()
-        for i in 2 3 4 5; do
+        for i in 2 3 4 5 6 7 8; do
             # Reset la branche pour un état propre avant chaque challenge
             reset_branch "${branches[$i]}"
 
@@ -199,7 +214,7 @@ case $CHALLENGE in
         ;;
     *)
         # --- Message d'aide si argument invalide ---
-        echo "Usage: $0 <1|2|3|4|5|all> [agent_command]"
+        echo "Usage: $0 <1|2|3|4|5|6|7|8|all> [agent_command]"
         echo ""
         echo "Challenges:"
         echo "  1   - Merge Conflict Resolution (setup manuel)"
@@ -207,7 +222,10 @@ case $CHALLENGE in
         echo "  3   - Refactor Monolith Pipeline"
         echo "  4   - Add Checkpointing System"
         echo "  5   - Data Quality Module"
-        echo "  all - Run challenges 2-5 en séquence"
+        echo "  6   - Rétrodocumentation"
+        echo "  7   - Mapping Codebase"
+        echo "  8   - Debugging (4 bugs)"
+        echo "  all - Run challenges 2-8 en séquence"
         echo ""
         echo "Exemples:"
         echo "  $0 2                    # Challenge 2 avec Claude (défaut)"
