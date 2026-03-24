@@ -98,11 +98,33 @@ run_challenge() {
 
     # --- Étape 5 : Valider le résultat ---
     echo -e "\n${BLUE}Running validation...${NC}"
-    local result=0
-    if python3 "$validator" 2>&1; then
-        echo -e "\n${GREEN}>>> Challenge $num: PASSED (${elapsed}s) <<<${NC}"
+    local val_output
+    val_output=$(python3 "$validator" 2>&1)
+    echo "$val_output"
+
+    # Parse le score — deux formats possibles selon le validator :
+    # Format A : lignes [PASS] / [FAIL]
+    # Format B : "Résultat: X/Y checks passés"
+    local pass_count=0 fail_count=0 total_checks=0
+    if echo "$val_output" | grep -q "Résultat:"; then
+        local score_line
+        score_line=$(echo "$val_output" | grep "Résultat:")
+        pass_count=$(echo "$score_line" | grep -o '[0-9]*/' | tr -d '/')
+        total_checks=$(echo "$score_line" | grep -o '/[0-9]*' | tr -d '/')
+        fail_count=$((total_checks - pass_count))
     else
-        echo -e "\n${RED}>>> Challenge $num: FAILED (${elapsed}s) <<<${NC}"
+        pass_count=$(echo "$val_output" | grep -c '^\[PASS\]' || true)
+        fail_count=$(echo "$val_output" | grep -c '^\[FAIL\]' || true)
+        total_checks=$((pass_count + fail_count))
+    fi
+
+    eval "CHALLENGE_SCORE_$num=\"${pass_count}/${total_checks}\""
+
+    local result=0
+    if [ "$fail_count" -eq 0 ] && [ "$total_checks" -gt 0 ]; then
+        echo -e "\n${GREEN}>>> Challenge $num: ${pass_count}/${total_checks} PASSED (${elapsed}s) <<<${NC}"
+    else
+        echo -e "\n${YELLOW}>>> Challenge $num: ${pass_count}/${total_checks} passed (${elapsed}s) <<<${NC}"
         result=1
     fi
 
@@ -198,32 +220,47 @@ case $CHALLENGE in
             "validate_challenge8.py"        # index 8
         )
 
-        results=()
+        declare -a names=(
+            "" "" "Hardcoded Credentials" "Monolith Pipeline"
+            "Add Checkpointing" "Data Quality"
+            "Rétrodocumentation" "Mapping Codebase" "Debugging"
+        )
         for i in 2 3 4 5 6 7 8; do
-            # Reset la branche pour un état propre avant chaque challenge
             reset_branch "${branches[$i]}"
-
-            if run_challenge $i "${branches[$i]}" "${validators[$i]}"; then
-                ((passed++))
-                results+=("${GREEN}  Challenge $i: PASSED${NC}")
-            else
-                ((failed++))
-                results+=("${RED}  Challenge $i: FAILED${NC}")
-            fi
+            run_challenge $i "${branches[$i]}" "${validators[$i]}"
         done
 
         total_end=$(date +%s)
         total_elapsed=$((total_end - total_start))
 
-        # --- Résumé final ---
+        # --- Tableau récapitulatif ---
+        total_passed=0
+        total_checks=0
         echo -e "\n=========================================="
         echo " BENCHMARK RESULTS"
         echo "=========================================="
-        for r in "${results[@]}"; do
-            echo -e "$r"
+        printf "  %-4s %-24s %s\n" "#" "Challenge" "Score"
+        echo "  ---- ------------------------ --------"
+        for i in 2 3 4 5 6 7 8; do
+            score=$(eval echo "\$CHALLENGE_SCORE_$i")
+            score="${score:-0/0}"
+            p="${score%%/*}"
+            t="${score##*/}"
+            total_passed=$((total_passed + p))
+            total_checks=$((total_checks + t))
+            if [ "$p" = "$t" ] && [ "$t" != "0" ]; then
+                color="$GREEN"
+            elif [ "$p" = "0" ]; then
+                color="$RED"
+            else
+                color="$YELLOW"
+            fi
+            printf "  ${color}%-4s %-24s %s${NC}\n" "$i" "${names[$i]}" "$score"
         done
+        echo "  ---- ------------------------ --------"
+        printf "  %-4s %-24s %s\n" "" "TOTAL" "${total_passed}/${total_checks}"
         echo "=========================================="
-        echo -e "Score: ${GREEN}$passed passed${NC} / ${RED}$failed failed${NC} (total: ${total_elapsed}s)"
+        echo -e "  Duration: ${total_elapsed}s"
         echo "=========================================="
 
         # Retour sur main
