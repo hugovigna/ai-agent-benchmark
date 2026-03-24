@@ -73,7 +73,6 @@ run_challenge() {
     cp *_agent.py "$tmpdir/" 2>/dev/null || true
     git checkout "$branch" 2>/dev/null
     cp "$tmpdir/"*_agent.py . 2>/dev/null || true
-    rm -rf "$tmpdir"
     echo -e "${BLUE}On branch: $(git branch --show-current)${NC}"
 
     # --- Étape 2 : Chronomètre - début ---
@@ -99,8 +98,14 @@ run_challenge() {
         echo -e "\n${RED}>>> Challenge $num: FAILED (${elapsed}s) <<<${NC}"
         result=1
     fi
-    # Retour sur main pour que run_benchmark.sh et les scripts agent soient disponibles
+
+    # --- Étape 6 : Restaurer la branche à son état d'origine ---
+    git checkout -- . 2>/dev/null || true   # Annule les modifications trackées
+    git clean -fd --exclude="*_agent.py" 2>/dev/null || true  # Supprime les nouveaux fichiers
+    # Retour sur main (les scripts agent dans tmpdir sont déjà là)
     git checkout main 2>/dev/null
+    cp "$tmpdir/"*_agent.py . 2>/dev/null || true
+    rm -rf "$tmpdir"
     return $result
 }
 
