@@ -104,9 +104,15 @@ run_challenge() {
 reset_branch() {
     local branch=$1
     echo -e "${BLUE}Resetting branch $branch...${NC}"
+    # Sauvegarde les scripts agent avant le checkout (ils n'existent que sur main)
+    local tmpdir=$(mktemp -d)
+    cp *_agent.py "$tmpdir/" 2>/dev/null || true
     git checkout "$branch" 2>&1 || true
     git checkout -- . 2>&1 || true    # Annule les modifications non commitées
     git clean -fd 2>&1 || true        # Supprime les fichiers non trackés
+    # Restaure les scripts agent
+    cp "$tmpdir/"*_agent.py . 2>/dev/null || true
+    rm -rf "$tmpdir"
     echo -e "${BLUE}Branch reset done.${NC}"
 }
 
