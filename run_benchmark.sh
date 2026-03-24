@@ -35,6 +35,9 @@ CHALLENGE=$1
 DEFAULT_AGENT='claude -p "Lis TASK.md et résous le challenge décrit dedans. Modifie les fichiers nécessaires." --allowedTools "Edit,Write,Read,Glob,Grep,Bash"'
 AGENT_CMD=${2:-$DEFAULT_AGENT}
 
+# --- Répertoire racine du benchmark (chemin absolu) ---
+BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # --- Couleurs pour l'affichage dans le terminal ---
 RED='\033[0;31m'      # Rouge = échec
 GREEN='\033[0;32m'    # Vert = succès
@@ -68,19 +71,23 @@ run_challenge() {
     echo -e "${YELLOW}==========================================${NC}"
 
     # --- Étape 1 : Se placer sur la branche du challenge ---
-    # Sauvegarde les scripts agent (ils n'existent que sur main)
-    local tmpdir=$(mktemp -d)
-    cp *_agent.py "$tmpdir/" 2>/dev/null || true
     git checkout "$branch" 2>/dev/null
-    cp "$tmpdir/"*_agent.py . 2>/dev/null || true
     echo -e "${BLUE}On branch: $(git branch --show-current)${NC}"
+
+    # Remplace les chemins relatifs *_agent.py dans la commande par leur chemin absolu
+    local agent_cmd_resolved="$AGENT_CMD"
+    for f in "$BENCH_DIR/"*_agent.py; do
+        [ -f "$f" ] || continue
+        local base=$(basename "$f")
+        agent_cmd_resolved="${agent_cmd_resolved//$base/$f}"
+    done
 
     # --- Étape 2 : Chronomètre - début ---
     local start_time=$(date +%s)
 
     # --- Étape 3 : Lancer l'agent IA ---
     echo -e "\n${BLUE}Running agent...${NC}"
-    eval "$AGENT_CMD"
+    eval "$agent_cmd_resolved"
     local agent_exit=$?
 
     # --- Étape 4 : Chronomètre - fin ---
@@ -99,13 +106,10 @@ run_challenge() {
         result=1
     fi
 
-    # --- Étape 6 : Restaurer la branche à son état d'origine ---
-    git checkout -- . 2>/dev/null || true   # Annule les modifications trackées
-    git clean -fd --exclude="*_agent.py" 2>/dev/null || true  # Supprime les nouveaux fichiers
-    # Retour sur main (les scripts agent dans tmpdir sont déjà là)
+    # --- Étape 6 : Restaurer la branche à son état d'origine et revenir sur main ---
+    git checkout -- . 2>/dev/null || true
+    git clean -fd 2>/dev/null || true
     git checkout main 2>/dev/null
-    cp "$tmpdir/"*_agent.py . 2>/dev/null || true
-    rm -rf "$tmpdir"
     return $result
 }
 
@@ -117,15 +121,9 @@ run_challenge() {
 reset_branch() {
     local branch=$1
     echo -e "${BLUE}Resetting branch $branch...${NC}"
-    # Sauvegarde les scripts agent avant le checkout (ils n'existent que sur main)
-    local tmpdir=$(mktemp -d)
-    cp *_agent.py "$tmpdir/" 2>/dev/null || true
     git checkout "$branch" 2>&1 || true
     git checkout -- . 2>&1 || true    # Annule les modifications non commitées
     git clean -fd 2>&1 || true        # Supprime les fichiers non trackés
-    # Restaure les scripts agent
-    cp "$tmpdir/"*_agent.py . 2>/dev/null || true
-    rm -rf "$tmpdir"
     echo -e "${BLUE}Branch reset done.${NC}"
 }
 
