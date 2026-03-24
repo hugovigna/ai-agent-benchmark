@@ -234,17 +234,17 @@ case $CHALLENGE in
         printf "  %-4s %-24s %s\n" "#" "Challenge" "Score"
         echo "  ---- ------------------------ --------"
         for i in 2 3 4 5 6 7 8; do
-            local score="${scores[$i]:-0/0}"
-            local p="${score%%/*}"
-            local t="${score##*/}"
+            score="${scores[$i]:-0/0}"
+            p="${score%%/*}"
+            t="${score##*/}"
             total_passed=$((total_passed + p))
             total_checks=$((total_checks + t))
             if [ "$p" = "$t" ] && [ "$t" != "0" ]; then
-                local color="$GREEN"
+                color="$GREEN"
             elif [ "$p" = "0" ]; then
-                local color="$RED"
+                color="$RED"
             else
-                local color="$YELLOW"
+                color="$YELLOW"
             fi
             printf "  ${color}%-4s %-24s %s${NC}\n" "$i" "${names[$i]}" "$score"
         done
