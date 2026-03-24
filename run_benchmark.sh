@@ -38,11 +38,6 @@ AGENT_CMD=${2:-$DEFAULT_AGENT}
 # --- Répertoire racine du benchmark (chemin absolu) ---
 BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# --- Copie des scripts agent dans un dossier temp (ils disparaissent lors des git checkout) ---
-AGENT_TMPDIR=$(mktemp -d)
-cp "$BENCH_DIR/"*_agent.py "$AGENT_TMPDIR/" 2>/dev/null || true
-trap "rm -rf '$AGENT_TMPDIR'" EXIT
-
 # --- Couleurs pour l'affichage dans le terminal ---
 RED='\033[0;31m'      # Rouge = échec
 GREEN='\033[0;32m'    # Vert = succès
@@ -81,7 +76,7 @@ run_challenge() {
 
     # Remplace les chemins relatifs *_agent.py dans la commande par leur chemin absolu
     local agent_cmd_resolved="$AGENT_CMD"
-    for f in "$AGENT_TMPDIR/"*_agent.py; do
+    for f in "$BENCH_DIR/"*_agent.py; do
         [ -f "$f" ] || continue
         local base=$(basename "$f")
         agent_cmd_resolved="${agent_cmd_resolved//$base/$f}"
@@ -191,17 +186,6 @@ case $CHALLENGE in
             "challenge/mapping"            # index 7
             "challenge/debugging"          # index 8
         )
-        names=(
-            ""                              # index 0
-            ""                              # index 1
-            "Hardcoded Credentials"         # index 2
-            "Monolith Pipeline"             # index 3
-            "Add Checkpointing"             # index 4
-            "Data Quality"                  # index 5
-            "Rétrodocumentation"            # index 6
-            "Mapping Codebase"              # index 7
-            "Debugging"                     # index 8
-        )
         validators=(
             ""                              # index 0
             ""                              # index 1
@@ -214,44 +198,32 @@ case $CHALLENGE in
             "validate_challenge8.py"        # index 8
         )
 
-        declare -a scores=()
-        total_passed=0
-        total_checks=0
+        results=()
         for i in 2 3 4 5 6 7 8; do
             # Reset la branche pour un état propre avant chaque challenge
             reset_branch "${branches[$i]}"
-            run_challenge $i "${branches[$i]}" "${validators[$i]}"
-            scores[$i]=$(eval echo "\$CHALLENGE_SCORE_$i")
+
+            if run_challenge $i "${branches[$i]}" "${validators[$i]}"; then
+                ((passed++))
+                results+=("${GREEN}  Challenge $i: PASSED${NC}")
+            else
+                ((failed++))
+                results+=("${RED}  Challenge $i: FAILED${NC}")
+            fi
         done
 
         total_end=$(date +%s)
         total_elapsed=$((total_end - total_start))
 
-        # --- Tableau récapitulatif ---
+        # --- Résumé final ---
         echo -e "\n=========================================="
         echo " BENCHMARK RESULTS"
         echo "=========================================="
-        printf "  %-4s %-24s %s\n" "#" "Challenge" "Score"
-        echo "  ---- ------------------------ --------"
-        for i in 2 3 4 5 6 7 8; do
-            score="${scores[$i]:-0/0}"
-            p="${score%%/*}"
-            t="${score##*/}"
-            total_passed=$((total_passed + p))
-            total_checks=$((total_checks + t))
-            if [ "$p" = "$t" ] && [ "$t" != "0" ]; then
-                color="$GREEN"
-            elif [ "$p" = "0" ]; then
-                color="$RED"
-            else
-                color="$YELLOW"
-            fi
-            printf "  ${color}%-4s %-24s %s${NC}\n" "$i" "${names[$i]}" "$score"
+        for r in "${results[@]}"; do
+            echo -e "$r"
         done
-        echo "  ---- ------------------------ --------"
-        printf "  %-4s %-24s %s\n" "" "TOTAL" "${total_passed}/${total_checks}"
         echo "=========================================="
-        echo -e "  Duration: ${total_elapsed}s"
+        echo -e "Score: ${GREEN}$passed passed${NC} / ${RED}$failed failed${NC} (total: ${total_elapsed}s)"
         echo "=========================================="
 
         # Retour sur main
