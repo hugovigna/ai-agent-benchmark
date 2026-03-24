@@ -191,6 +191,17 @@ case $CHALLENGE in
             "challenge/mapping"            # index 7
             "challenge/debugging"          # index 8
         )
+        names=(
+            ""                              # index 0
+            ""                              # index 1
+            "Hardcoded Credentials"         # index 2
+            "Monolith Pipeline"             # index 3
+            "Add Checkpointing"             # index 4
+            "Data Quality"                  # index 5
+            "Rétrodocumentation"            # index 6
+            "Mapping Codebase"              # index 7
+            "Debugging"                     # index 8
+        )
         validators=(
             ""                              # index 0
             ""                              # index 1
@@ -203,34 +214,44 @@ case $CHALLENGE in
             "validate_challenge8.py"        # index 8
         )
 
-        results=()
+        declare -a scores=()
+        total_passed=0
+        total_checks=0
         for i in 2 3 4 5 6 7 8; do
             # Reset la branche pour un état propre avant chaque challenge
             reset_branch "${branches[$i]}"
-
-            if run_challenge $i "${branches[$i]}" "${validators[$i]}"; then
-                ((passed++))
-                local score=$(eval echo "\$CHALLENGE_SCORE_$i")
-                results+=("${GREEN}  Challenge $i: PASSED ($score checks)${NC}")
-            else
-                ((failed++))
-                local score=$(eval echo "\$CHALLENGE_SCORE_$i")
-                results+=("${YELLOW}  Challenge $i: $score checks passed${NC}")
-            fi
+            run_challenge $i "${branches[$i]}" "${validators[$i]}"
+            scores[$i]=$(eval echo "\$CHALLENGE_SCORE_$i")
         done
 
         total_end=$(date +%s)
         total_elapsed=$((total_end - total_start))
 
-        # --- Résumé final ---
+        # --- Tableau récapitulatif ---
         echo -e "\n=========================================="
         echo " BENCHMARK RESULTS"
         echo "=========================================="
-        for r in "${results[@]}"; do
-            echo -e "$r"
+        printf "  %-4s %-24s %s\n" "#" "Challenge" "Score"
+        echo "  ---- ------------------------ --------"
+        for i in 2 3 4 5 6 7 8; do
+            local score="${scores[$i]:-0/0}"
+            local p="${score%%/*}"
+            local t="${score##*/}"
+            total_passed=$((total_passed + p))
+            total_checks=$((total_checks + t))
+            if [ "$p" = "$t" ] && [ "$t" != "0" ]; then
+                local color="$GREEN"
+            elif [ "$p" = "0" ]; then
+                local color="$RED"
+            else
+                local color="$YELLOW"
+            fi
+            printf "  ${color}%-4s %-24s %s${NC}\n" "$i" "${names[$i]}" "$score"
         done
+        echo "  ---- ------------------------ --------"
+        printf "  %-4s %-24s %s\n" "" "TOTAL" "${total_passed}/${total_checks}"
         echo "=========================================="
-        echo -e "Score: ${GREEN}$passed passed${NC} / ${RED}$failed failed${NC} (total: ${total_elapsed}s)"
+        echo -e "  Duration: ${total_elapsed}s"
         echo "=========================================="
 
         # Retour sur main
