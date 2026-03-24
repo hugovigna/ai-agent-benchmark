@@ -210,10 +210,12 @@ case $CHALLENGE in
 
             if run_challenge $i "${branches[$i]}" "${validators[$i]}"; then
                 ((passed++))
-                results+=("${GREEN}  Challenge $i: PASSED${NC}")
+                local score=$(eval echo "\$CHALLENGE_SCORE_$i")
+                results+=("${GREEN}  Challenge $i: PASSED ($score checks)${NC}")
             else
                 ((failed++))
-                results+=("${RED}  Challenge $i: FAILED${NC}")
+                local score=$(eval echo "\$CHALLENGE_SCORE_$i")
+                results+=("${YELLOW}  Challenge $i: $score checks passed${NC}")
             fi
         done
 
