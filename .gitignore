@@ -32,3 +32,4 @@ checkpoints/
 *.egg-info/
 dist/
 build/
+.claude/
