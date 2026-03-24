@@ -61,7 +61,7 @@ def main():
     token = get_github_token()
 
     client = OpenAI(
-        base_url="https://api.githubcopilot.com",
+        base_url="https://models.inference.ai.azure.com",
         api_key=token,
     )
 
