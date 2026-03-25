@@ -159,6 +159,79 @@ def check_force_restart():
 
 
 # =============================================================================
+# CHECK 6b : Les checkpoints sont stockés dans un répertoire dédié
+# =============================================================================
+def check_checkpoint_directory():
+    """Vérifie que les checkpoints sont écrits dans un dossier dédié
+    (checkpoints/, .checkpoints/, data/checkpoints/...) et non à la racine."""
+    import re
+    py_files = []
+    for root, dirs, files in os.walk("src"):
+        for f in files:
+            if f.endswith(".py"):
+                py_files.append(os.path.join(root, f))
+
+    all_content = ""
+    for pf in py_files:
+        with open(pf, "r") as f:
+            all_content += f.read()
+
+    dir_patterns = [
+        re.compile(r'checkpoints?[/\\]', re.IGNORECASE),
+        re.compile(r'checkpoint_dir', re.IGNORECASE),
+        re.compile(r'["\']\./checkpoints?["\']'),
+    ]
+    if not any(p.search(all_content) for p in dir_patterns):
+        return ["Checkpoints not stored in a dedicated directory (e.g. checkpoints/)"]
+    return []
+
+
+# =============================================================================
+# CHECK 6c : Le checkpoint contient les clés structurelles requises
+# =============================================================================
+def check_checkpoint_structure():
+    """Vérifie que le code écrit un checkpoint avec au minimum les clés
+    'step' (ou 'step_number') et 'completed_steps' dans le JSON."""
+    py_files = []
+    for root, dirs, files in os.walk("src"):
+        for f in files:
+            if f.endswith(".py"):
+                py_files.append(os.path.join(root, f))
+
+    all_content = ""
+    for pf in py_files:
+        with open(pf, "r") as f:
+            all_content += f.read()
+
+    required = ["step", "completed_step"]
+    missing = [k for k in required if k not in all_content.lower()]
+    if missing:
+        return [f"Checkpoint JSON missing structural keys: {missing}"]
+    return []
+
+
+# =============================================================================
+# CHECK 6d : Chaque étape est checkpointée individuellement
+# =============================================================================
+def check_per_step_checkpointing():
+    """Vérifie que le checkpoint est appelé à l'intérieur de la boucle
+    ou dans le corps de chaque step — pas juste en fin de pipeline."""
+    pipeline_path = "src/long_pipeline.py"
+    if not os.path.exists(pipeline_path):
+        return ["src/long_pipeline.py not found"]
+
+    with open(pipeline_path, "r") as f:
+        content = f.read()
+
+    # On cherche "save" ou "checkpoint" dans une boucle ou répété plusieurs fois
+    import re
+    checkpoint_calls = re.findall(r'(?:save_checkpoint|checkpoint|json\.dump)', content, re.IGNORECASE)
+    if len(checkpoint_calls) < 2:
+        return ["Checkpoint appears to be called only once (should be called after each step)"]
+    return []
+
+
+# =============================================================================
 # CHECK 6 : Syntaxe Python valide
 # =============================================================================
 def check_syntax():
@@ -192,6 +265,9 @@ def main():
         ("Resume/recovery logic", check_resume_logic),
         ("Cleanup after success", check_cleanup),
         ("Force restart option", check_force_restart),
+        ("Dedicated checkpoint directory", check_checkpoint_directory),
+        ("Checkpoint JSON structure", check_checkpoint_structure),
+        ("Per-step checkpointing", check_per_step_checkpointing),
         ("Syntax validity", check_syntax),
     ]
 
