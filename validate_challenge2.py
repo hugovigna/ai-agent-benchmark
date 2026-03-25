@@ -131,6 +131,67 @@ def check_dotenv_usage():
 
 
 # =============================================================================
+# CHECK 5b : load_dotenv() doit être appelé explicitement
+# =============================================================================
+def check_load_dotenv_called():
+    """Vérifie que load_dotenv() est explicitement appelé dans chaque fichier,
+    pas juste importé. Un import sans appel ne charge pas le .env."""
+    issues = []
+    for filepath in TARGET_FILES:
+        if not os.path.exists(filepath):
+            continue
+        with open(filepath, "r") as f:
+            content = f.read()
+        if "dotenv" in content and "load_dotenv" not in content:
+            issues.append(f"{filepath}: dotenv imported but load_dotenv() never called")
+    return issues
+
+
+# =============================================================================
+# CHECK 5c : Pas de valeurs par défaut hardcodées dans os.getenv()
+# =============================================================================
+def check_no_hardcoded_defaults():
+    """Interdit os.getenv("VAR", "valeur_hardcodée") — remplacement partiel
+    du secret par une valeur par défaut dans le code = sécurité contournée."""
+    issues = []
+    # Détecte os.getenv("KEY", "quelquechose") avec une vraie valeur par défaut
+    pattern = re.compile(r'os\.getenv\s*\(\s*["\'][^"\']+["\']\s*,\s*["\'][^"\']+["\']')
+    for filepath in TARGET_FILES:
+        if not os.path.exists(filepath):
+            continue
+        with open(filepath, "r") as f:
+            content = f.read()
+        if pattern.search(content):
+            issues.append(f"{filepath}: os.getenv() has a hardcoded default value")
+    return issues
+
+
+# =============================================================================
+# CHECK 5d : Les variables requises lèvent une exception si manquantes
+# =============================================================================
+def check_missing_var_raises():
+    """Vérifie qu'au moins un fichier valide que les variables ne sont pas None
+    (raise, assert, if ... raise, etc.). Un os.getenv silencieux = bug discret."""
+    validation_patterns = [
+        re.compile(r'raise\s+(?:ValueError|RuntimeError|EnvironmentError|KeyError)'),
+        re.compile(r'if\s+.*(?:is\s+None|==\s*None).*:\s*\n\s*raise'),
+        re.compile(r'assert\s+\w+'),
+    ]
+    any_validation = False
+    for filepath in TARGET_FILES:
+        if not os.path.exists(filepath):
+            continue
+        with open(filepath, "r") as f:
+            content = f.read()
+        if any(p.search(content) for p in validation_patterns):
+            any_validation = True
+            break
+    if not any_validation:
+        return ["No file raises an exception when a required env variable is missing"]
+    return []
+
+
+# =============================================================================
 # CHECK 5 : Vérifier que le code Python est syntaxiquement valide
 # =============================================================================
 def check_syntax():
@@ -167,6 +228,9 @@ def main():
         (".env.example exists", check_env_example),
         (".gitignore configured", check_gitignore),
         ("python-dotenv usage", check_dotenv_usage),
+        ("load_dotenv() called", check_load_dotenv_called),
+        ("No hardcoded defaults in os.getenv()", check_no_hardcoded_defaults),
+        ("Missing vars raise exception", check_missing_var_raises),
         ("Syntax validity", check_syntax),
     ]
 
