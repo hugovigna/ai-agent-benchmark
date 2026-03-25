@@ -38,6 +38,12 @@ AGENT_CMD=${2:-$DEFAULT_AGENT}
 # --- Répertoire racine du benchmark (chemin absolu) ---
 BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# --- Copie des scripts agent dans un dossier temp AVANT tout git checkout ---
+# (les *_agent.py sont trackés sur main et disparaissent sur les branches challenge)
+AGENT_TMPDIR=$(mktemp -d)
+cp "$BENCH_DIR/"*_agent.py "$AGENT_TMPDIR/" 2>/dev/null || true
+trap "rm -rf '$AGENT_TMPDIR'" EXIT
+
 # --- Couleurs pour l'affichage dans le terminal ---
 RED='\033[0;31m'      # Rouge = échec
 GREEN='\033[0;32m'    # Vert = succès
@@ -76,7 +82,7 @@ run_challenge() {
 
     # Remplace les chemins relatifs *_agent.py dans la commande par leur chemin absolu
     local agent_cmd_resolved="$AGENT_CMD"
-    for f in "$BENCH_DIR/"*_agent.py; do
+    for f in "$AGENT_TMPDIR/"*_agent.py; do
         [ -f "$f" ] || continue
         local base=$(basename "$f")
         agent_cmd_resolved="${agent_cmd_resolved//$base/$f}"
