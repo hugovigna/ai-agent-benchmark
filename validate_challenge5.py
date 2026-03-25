@@ -206,6 +206,80 @@ def check_anomaly_detection():
 
 
 # =============================================================================
+# CHECK 7b : Le fichier de config contient les 4 seuils requis
+# =============================================================================
+def check_config_has_required_thresholds():
+    """Vérifie que le fichier de config contient bien les 4 seuils définis
+    dans le TASK.md — pas juste un fichier JSON vide ou générique."""
+    import re
+    config_paths = [
+        "config/quality_thresholds.json",
+        "config/quality_thresholds.yaml",
+        "config/quality_thresholds.yml",
+        "config/quality_config.json",
+        "config/quality_config.yaml",
+    ]
+    config_path = next((p for p in config_paths if os.path.exists(p)), None)
+    if not config_path:
+        return ["No config file found — cannot check thresholds"]
+
+    with open(config_path, "r") as f:
+        content = f.read().lower()
+
+    required_keys = ["max_null_percentage", "min_completeness",
+                     "max_duplicate_percentage", "anomaly_threshold"]
+    missing = [k for k in required_keys if k not in content]
+    if missing:
+        return [f"Config missing required threshold keys: {missing}"]
+    return []
+
+
+# =============================================================================
+# CHECK 7c : Le rapport JSON a la structure minimale attendue
+# =============================================================================
+def check_report_json_structure():
+    """Vérifie que le rapport JSON généré contient les clés obligatoires :
+    timestamp, total_records, columns, quality_score."""
+    path = "src/data_quality/report.py"
+    if not os.path.exists(path):
+        return [f"MISSING: {path}"]
+
+    with open(path, "r") as f:
+        content = f.read().lower()
+
+    required_keys = ["timestamp", "total_records", "quality_score", "columns"]
+    missing = [k for k in required_keys if k not in content]
+    if missing:
+        return [f"report.py: JSON structure missing keys: {missing}"]
+    return []
+
+
+# =============================================================================
+# CHECK 7d : Détection d'anomalies à 3-sigma (pas juste un mot-clé vague)
+# =============================================================================
+def check_three_sigma():
+    """Vérifie que la détection d'anomalies utilise bien le seuil à 3 écarts-types
+    (z-score > 3) comme défini dans les specs, et pas juste un mot-clé générique."""
+    import re
+    all_content = ""
+    for root, dirs, files in os.walk("src/data_quality"):
+        for f in files:
+            if f.endswith(".py"):
+                with open(os.path.join(root, f), "r") as fh:
+                    all_content += fh.read()
+
+    # Cherche la valeur 3 associée à std/sigma/z-score
+    sigma_patterns = [
+        re.compile(r'\b3\b.*(?:std|sigma|z.?score)', re.IGNORECASE),
+        re.compile(r'(?:std|sigma|z.?score).*\b3\b', re.IGNORECASE),
+        re.compile(r'anomaly_threshold.*[=:]\s*3', re.IGNORECASE),
+    ]
+    if not any(p.search(all_content) for p in sigma_patterns):
+        return ["Anomaly detection does not explicitly use 3-sigma threshold"]
+    return []
+
+
+# =============================================================================
 # CHECK 7 : Syntaxe Python valide
 # =============================================================================
 def check_syntax():
@@ -239,7 +313,10 @@ def main():
         ("Report generation", check_report_generation),
         ("Quality gates", check_quality_gates),
         ("Config file", check_config_file),
+        ("Config has required thresholds", check_config_has_required_thresholds),
+        ("Report JSON structure", check_report_json_structure),
         ("Anomaly detection", check_anomaly_detection),
+        ("3-sigma threshold", check_three_sigma),
         ("Syntax validity", check_syntax),
     ]
 
