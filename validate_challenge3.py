@@ -59,14 +59,14 @@ def check_extract_module():
         return [f"MISSING: {path}"]
     with open(path, "r") as f:
         content = f.read()
-    tree = ast.parse(content)
-    # ast.walk parcourt tout l'arbre et FunctionDef = définition de fonction
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as e:
+        return [f"extract.py: syntax error — {e}"]
     func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     issues = []
-    # Cherche une fonction de découverte de fichiers
     if not any("discover" in fn or "source" in fn or "find" in fn for fn in func_names):
         issues.append("extract.py: no file discovery function found")
-    # Cherche une fonction de parsing CSV/JSON
     if not any("csv" in fn.lower() or "parse" in fn.lower() or "read" in fn.lower() for fn in func_names):
         issues.append("extract.py: no CSV/JSON parsing function found")
     return issues
@@ -89,10 +89,12 @@ def check_transform_module():
         return [f"MISSING: {path}"]
     with open(path, "r") as f:
         content = f.read()
-    tree = ast.parse(content)
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as e:
+        return [f"transform.py: syntax error — {e}"]
     func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     issues = []
-    # On s'attend à une fonction par concept de transformation
     expected_concepts = ["dedup", "clean", "valid", "enrich"]
     for concept in expected_concepts:
         if not any(concept in fn.lower() for fn in func_names):
@@ -113,7 +115,10 @@ def check_load_module():
         return [f"MISSING: {path}"]
     with open(path, "r") as f:
         content = f.read()
-    tree = ast.parse(content)
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as e:
+        return [f"load.py: syntax error — {e}"]
     func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
     issues = []
     if not any("write" in fn.lower() or "save" in fn.lower() or "load" in fn.lower() or "output" in fn.lower() for fn in func_names):
