@@ -195,9 +195,12 @@ case $CHALLENGE in
     8)
         run_challenge 8 "challenge/debugging" "$AGENT_TMPDIR/validate_challenge8.py"
         ;;
+    9)
+        run_challenge 9 "challenge/pandas-pipeline" "$AGENT_TMPDIR/validate_challenge9.py"
+        ;;
     all)
-        # --- Mode "all" : lance les challenges 2 à 8 en séquence ---
-        echo "Running all challenges (2-8)..."
+        # --- Mode "all" : lance les challenges 2 à 9 en séquence ---
+        echo "Running all challenges (2-9)..."
         echo ""
         passed=0
         failed=0
@@ -214,6 +217,7 @@ case $CHALLENGE in
             "challenge/retrodoc"           # index 6
             "challenge/mapping"            # index 7
             "challenge/debugging"          # index 8
+            "challenge/pandas-pipeline"    # index 9
         )
         validators=(
             ""                                                  # index 0
@@ -225,14 +229,15 @@ case $CHALLENGE in
             "$AGENT_TMPDIR/validate_challenge6.py"              # index 6
             "$AGENT_TMPDIR/validate_challenge7.py"              # index 7
             "$AGENT_TMPDIR/validate_challenge8.py"              # index 8
+            "$AGENT_TMPDIR/validate_challenge9.py"              # index 9
         )
 
         declare -a names=(
             "" "" "Hardcoded Credentials" "Monolith Pipeline"
             "Add Checkpointing" "Data Quality"
-            "Rétrodocumentation" "Mapping Codebase" "Debugging"
+            "Rétrodocumentation" "Mapping Codebase" "Debugging" "Pandas Pipeline"
         )
-        for i in 2 3 4 5 6 7 8; do
+        for i in 2 3 4 5 6 7 8 9; do
             reset_branch "${branches[$i]}"
             run_challenge $i "${branches[$i]}" "${validators[$i]}"
         done
@@ -248,7 +253,7 @@ case $CHALLENGE in
         echo "=========================================="
         printf "  %-4s %-24s %s\n" "#" "Challenge" "Score"
         echo "  ---- ------------------------ --------"
-        for i in 2 3 4 5 6 7 8; do
+        for i in 2 3 4 5 6 7 8 9; do
             score=$(eval echo "\$CHALLENGE_SCORE_$i")
             score="${score:-0/0}"
             p="${score%%/*}"
@@ -275,7 +280,7 @@ case $CHALLENGE in
         ;;
     *)
         # --- Message d'aide si argument invalide ---
-        echo "Usage: $0 <1|2|3|4|5|6|7|8|all> [agent_command]"
+        echo "Usage: $0 <1|2|3|4|5|6|7|8|9|all> [agent_command]"
         echo ""
         echo "Challenges:"
         echo "  1   - Merge Conflict Resolution (setup manuel)"
@@ -286,7 +291,8 @@ case $CHALLENGE in
         echo "  6   - Rétrodocumentation"
         echo "  7   - Mapping Codebase"
         echo "  8   - Debugging (4 bugs)"
-        echo "  all - Run challenges 2-8 en séquence"
+        echo "  9   - Pandas Pipeline (silent bugs)"
+        echo "  all - Run challenges 2-9 en séquence"
         echo ""
         echo "Exemples:"
         echo "  $0 2                    # Challenge 2 avec Claude (défaut)"
