@@ -38,10 +38,11 @@ AGENT_CMD=${2:-$DEFAULT_AGENT}
 # --- Répertoire racine du benchmark (chemin absolu) ---
 BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# --- Copie des scripts agent dans un dossier temp AVANT tout git checkout ---
-# (les *_agent.py sont trackés sur main et disparaissent sur les branches challenge)
+# --- Copie des scripts agent ET validators dans un dossier temp AVANT tout git checkout ---
+# (ces fichiers sont trackés sur main et disparaissent sur les branches challenge)
 AGENT_TMPDIR=$(mktemp -d)
 cp "$BENCH_DIR/"*_agent.py "$AGENT_TMPDIR/" 2>/dev/null || true
+cp "$BENCH_DIR/"validate_challenge*.py "$AGENT_TMPDIR/" 2>/dev/null || true
 trap "rm -rf '$AGENT_TMPDIR'" EXIT
 
 # --- Couleurs pour l'affichage dans le terminal ---
@@ -174,25 +175,25 @@ case $CHALLENGE in
         echo "  git checkout main && git merge feature/update-config && git merge feature/refactor-config; claude -p 'Résous le conflit de merge dans config/settings.py. Garde les valeurs de production ET les nouvelles sections monitoring/alerting.'"
         ;;
     2)
-        run_challenge 2 "challenge/hardcoded-creds" "validate_challenge2.py"
+        run_challenge 2 "challenge/hardcoded-creds" "$AGENT_TMPDIR/validate_challenge2.py"
         ;;
     3)
-        run_challenge 3 "challenge/monolith-pipeline" "validate_challenge3.py"
+        run_challenge 3 "challenge/monolith-pipeline" "$AGENT_TMPDIR/validate_challenge3.py"
         ;;
     4)
-        run_challenge 4 "challenge/add-checkpointing" "validate_challenge4.py"
+        run_challenge 4 "challenge/add-checkpointing" "$AGENT_TMPDIR/validate_challenge4.py"
         ;;
     5)
-        run_challenge 5 "challenge/data-quality" "validate_challenge5.py"
+        run_challenge 5 "challenge/data-quality" "$AGENT_TMPDIR/validate_challenge5.py"
         ;;
     6)
-        run_challenge 6 "challenge/retrodoc" "validate_challenge6.py"
+        run_challenge 6 "challenge/retrodoc" "$AGENT_TMPDIR/validate_challenge6.py"
         ;;
     7)
-        run_challenge 7 "challenge/mapping" "validate_challenge7.py"
+        run_challenge 7 "challenge/mapping" "$AGENT_TMPDIR/validate_challenge7.py"
         ;;
     8)
-        run_challenge 8 "challenge/debugging" "validate_challenge8.py"
+        run_challenge 8 "challenge/debugging" "$AGENT_TMPDIR/validate_challenge8.py"
         ;;
     all)
         # --- Mode "all" : lance les challenges 2 à 8 en séquence ---
@@ -215,15 +216,15 @@ case $CHALLENGE in
             "challenge/debugging"          # index 8
         )
         validators=(
-            ""                              # index 0
-            ""                              # index 1
-            "validate_challenge2.py"        # index 2
-            "validate_challenge3.py"        # index 3
-            "validate_challenge4.py"        # index 4
-            "validate_challenge5.py"        # index 5
-            "validate_challenge6.py"        # index 6
-            "validate_challenge7.py"        # index 7
-            "validate_challenge8.py"        # index 8
+            ""                                                  # index 0
+            ""                                                  # index 1
+            "$AGENT_TMPDIR/validate_challenge2.py"              # index 2
+            "$AGENT_TMPDIR/validate_challenge3.py"              # index 3
+            "$AGENT_TMPDIR/validate_challenge4.py"              # index 4
+            "$AGENT_TMPDIR/validate_challenge5.py"              # index 5
+            "$AGENT_TMPDIR/validate_challenge6.py"              # index 6
+            "$AGENT_TMPDIR/validate_challenge7.py"              # index 7
+            "$AGENT_TMPDIR/validate_challenge8.py"              # index 8
         )
 
         declare -a names=(
