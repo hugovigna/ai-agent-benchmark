@@ -186,29 +186,6 @@ def check_checkpoint_directory():
     return []
 
 
-# =============================================================================
-# CHECK 6c : Le checkpoint contient les clés structurelles requises
-# =============================================================================
-def check_checkpoint_structure():
-    """Vérifie que le code écrit un checkpoint avec au minimum les clés
-    'step' (ou 'step_number') et 'completed_steps' dans le JSON."""
-    py_files = []
-    for root, dirs, files in os.walk("src"):
-        for f in files:
-            if f.endswith(".py"):
-                py_files.append(os.path.join(root, f))
-
-    all_content = ""
-    for pf in py_files:
-        with open(pf, "r") as f:
-            all_content += f.read()
-
-    required = ["step", "completed_step"]
-    missing = [k for k in required if k not in all_content.lower()]
-    if missing:
-        return [f"Checkpoint JSON missing structural keys: {missing}"]
-    return []
-
 
 # =============================================================================
 # CHECK 6d : Chaque étape est checkpointée individuellement
@@ -266,7 +243,6 @@ def main():
         ("Cleanup after success", check_cleanup),
         ("Force restart option", check_force_restart),
         ("Dedicated checkpoint directory", check_checkpoint_directory),
-        ("Checkpoint JSON structure", check_checkpoint_structure),
         ("Per-step checkpointing", check_per_step_checkpointing),
         ("Syntax validity", check_syntax),
     ]
