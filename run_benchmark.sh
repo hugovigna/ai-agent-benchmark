@@ -37,6 +37,7 @@ AGENT_CMD=${2:-$DEFAULT_AGENT}
 
 # --- Répertoire racine du benchmark (chemin absolu) ---
 BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$BENCH_DIR"  # Toujours exécuter depuis la racine du repo
 
 # --- Copie des scripts agent ET validators dans un dossier temp AVANT tout git checkout ---
 # (ces fichiers sont trackés sur main et disparaissent sur les branches challenge)
