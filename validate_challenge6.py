@@ -10,7 +10,7 @@ import sys
 import os
 import re
 
-SRC_DIR = os.path.join(os.path.dirname(__file__), "src")
+SRC_DIR = os.path.join(os.getcwd(), "src")
 TARGET_FILES = ["data_loader.py", "transformer.py", "exporter.py", "pipeline_runner.py"]
 
 passed = 0

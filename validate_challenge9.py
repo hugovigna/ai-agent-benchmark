@@ -10,7 +10,7 @@ import sys
 import os
 import math
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.getcwd())
 
 passed = 0
 failed = 0

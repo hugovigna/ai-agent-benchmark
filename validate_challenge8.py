@@ -12,7 +12,7 @@ import threading
 import subprocess
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.getcwd())
 
 passed = 0
 failed = 0
@@ -314,7 +314,7 @@ def main():
     validate_slow_code()
 
     # Clean up any generated output files
-    results_file = os.path.join(os.path.dirname(__file__), "data", "results.json")
+    results_file = os.path.join(os.getcwd(), "data", "results.json")
     if os.path.exists(results_file):
         os.remove(results_file)
 

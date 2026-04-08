@@ -11,7 +11,7 @@ import sys
 import os
 import re
 
-MAPPING_FILE = os.path.join(os.path.dirname(__file__), "MAPPING.md")
+MAPPING_FILE = os.path.join(os.getcwd(), "MAPPING.md")
 
 # --- Ground truth: what the mapping must contain ---
 
