@@ -147,9 +147,7 @@ def main():
     for filename in TARGET_FILES:
         filepath = os.path.join(SRC_DIR, filename)
         if not os.path.exists(filepath):
-            print(f"
-❌ Fichier manquant: {filepath} (cwd: {os.getcwd()})
-")
+            print(f"❌ Fichier manquant: {filepath} (cwd: {os.getcwd()})")
             failed += 1
             continue
         validate_file(filepath, filename)
