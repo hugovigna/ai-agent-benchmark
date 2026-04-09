@@ -80,6 +80,8 @@ run_challenge() {
 
     # --- Étape 1 : Se placer sur la branche du challenge ---
     git checkout "$branch" 2>/dev/null
+    local initial_commit
+    initial_commit=$(git rev-parse HEAD)
     echo -e "${BLUE}On branch: $(git branch --show-current)${NC}"
 
     # Remplace les chemins relatifs *_agent.py dans la commande par leur chemin absolu
@@ -137,7 +139,7 @@ run_challenge() {
     fi
 
     # --- Étape 6 : Restaurer la branche à son état d'origine et revenir sur main ---
-    git checkout -- . 2>/dev/null || true
+    git reset --hard "$initial_commit" 2>/dev/null || true
     git clean -fd 2>/dev/null || true
     git checkout main 2>/dev/null
     return $result
@@ -152,8 +154,8 @@ reset_branch() {
     local branch=$1
     echo -e "${BLUE}Resetting branch $branch...${NC}"
     git checkout "$branch" 2>&1 || true
-    git checkout -- . 2>&1 || true    # Annule les modifications non commitées
-    git clean -fd 2>&1 || true        # Supprime les fichiers non trackés
+    git reset --hard HEAD 2>&1 || true  # Annule les commits et modifs de l'agent
+    git clean -fd 2>&1 || true          # Supprime les fichiers non trackés
     echo -e "${BLUE}Branch reset done.${NC}"
 }
 
