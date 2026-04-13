@@ -154,7 +154,7 @@ run_challenge() {
 
     # --- Étape 7 : Restaurer la branche à son état d'origine et revenir sur main ---
     git reset --hard "$initial_commit" 2>/dev/null || true
-    git clean -fd 2>/dev/null || true
+    git clean -fd -e benchmark_results.csv 2>/dev/null || true
     git checkout main 2>/dev/null
     return $result
 }
@@ -169,7 +169,7 @@ reset_branch() {
     echo -e "${BLUE}Resetting branch $branch...${NC}"
     git checkout "$branch" 2>&1 || true
     git reset --hard HEAD 2>&1 || true  # Annule les commits et modifs de l'agent
-    git clean -fd 2>&1 || true          # Supprime les fichiers non trackés
+    git clean -fd -e benchmark_results.csv 2>&1 || true  # Supprime les fichiers non trackés
     echo -e "${BLUE}Branch reset done.${NC}"
 }
 
