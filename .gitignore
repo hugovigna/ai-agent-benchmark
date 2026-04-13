@@ -33,3 +33,7 @@ checkpoints/
 dist/
 build/
 .claude/
+
+# --- Résultats du benchmark ---
+# Généré automatiquement par run_benchmark.sh, non versionné
+benchmark_results.csv
