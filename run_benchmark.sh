@@ -74,6 +74,24 @@ echo -e "${BLUE}Agent: ${AGENT_CMD}${NC}"
 #   $2 = nom de la branche git (ex: "challenge/hardcoded-creds")
 #   $3 = chemin du script de validation (ex: "validate_challenge2.py")
 # =============================================================================
+get_agent_label() {
+    local cmd="$1"
+    if echo "$cmd" | grep -q "cline_agent"; then
+        echo "cline"
+    elif echo "$cmd" | grep -q "copilot_agent"; then
+        echo "copilot"
+    elif echo "$cmd" | grep -q "claude"; then
+        echo "claude"
+    elif echo "$cmd" | grep -q "aider"; then
+        echo "aider"
+    elif echo "$cmd" | grep -q "opencode"; then
+        echo "opencode"
+    else
+        echo "$cmd" | grep -o '[a-zA-Z0-9_]*\.py' | head -1 | sed 's/\.py//' \
+            || echo "$cmd" | awk '{print $1}' | xargs basename 2>/dev/null
+    fi
+}
+
 run_challenge() {
     local num=$1
     local branch=$2
@@ -149,7 +167,7 @@ run_challenge() {
     local ts
     ts=$(date +%Y-%m-%dT%H:%M:%S)
     local agent_label
-    agent_label=$(echo "$AGENT_CMD" | awk '{print $1}' | xargs basename 2>/dev/null || echo "$AGENT_CMD" | cut -c1-30)
+    agent_label=$(get_agent_label "$AGENT_CMD")
     echo "${ts},${agent_label},${num},${pass_count}/${total_checks},${pass_count},${total_checks},${elapsed}" >> "$RESULTS_CSV"
 
     # --- Étape 7 : Restaurer la branche à son état d'origine et revenir sur main ---
@@ -296,7 +314,7 @@ case $CHALLENGE in
         local ts
         ts=$(date +%Y-%m-%dT%H:%M:%S)
         local agent_label
-        agent_label=$(echo "$AGENT_CMD" | awk '{print $1}' | xargs basename 2>/dev/null || echo "$AGENT_CMD" | cut -c1-30)
+        agent_label=$(get_agent_label "$AGENT_CMD")
         echo "${ts},${agent_label},all,${total_passed}/${total_checks},${total_passed},${total_checks},${total_elapsed}" >> "$RESULTS_CSV"
 
         # Retour sur main
