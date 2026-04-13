@@ -30,6 +30,13 @@ set +e  # On ne quitte PAS à la première erreur (les validateurs retournent ex
 # --- Argument 1 : numéro du challenge (1-5 ou "all") ---
 CHALLENGE=$1
 
+# --- Fichier de log CSV ---
+RESULTS_CSV="$BENCH_DIR/benchmark_results.csv"
+# Créer l'en-tête si le fichier n'existe pas encore
+if [ ! -f "$RESULTS_CSV" ]; then
+    echo "timestamp,agent,challenge,score,passed,total,duration_s" > "$RESULTS_CSV"
+fi
+
 # --- Argument 2 : commande pour lancer l'agent IA (optionnel) ---
 # Par défaut : Claude en mode non-interactif avec auto-accept de tous les outils
 DEFAULT_AGENT='claude -p "Lis TASK.md et résous le challenge décrit dedans. Modifie les fichiers nécessaires." --allowedTools "Edit,Write,Read,Glob,Grep,Bash"'
@@ -138,7 +145,14 @@ run_challenge() {
         result=1
     fi
 
-    # --- Étape 6 : Restaurer la branche à son état d'origine et revenir sur main ---
+    # --- Étape 6 : Sauvegarder le résultat dans le CSV ---
+    local ts
+    ts=$(date +%Y-%m-%dT%H:%M:%S)
+    local agent_label
+    agent_label=$(echo "$AGENT_CMD" | awk '{print $1}' | xargs basename 2>/dev/null || echo "$AGENT_CMD" | cut -c1-30)
+    echo "${ts},${agent_label},${num},${pass_count}/${total_checks},${pass_count},${total_checks},${elapsed}" >> "$RESULTS_CSV"
+
+    # --- Étape 7 : Restaurer la branche à son état d'origine et revenir sur main ---
     git reset --hard "$initial_commit" 2>/dev/null || true
     git clean -fd 2>/dev/null || true
     git checkout main 2>/dev/null
@@ -277,6 +291,13 @@ case $CHALLENGE in
         echo "=========================================="
         echo -e "  Duration: ${total_elapsed}s"
         echo "=========================================="
+
+        # --- Ligne TOTAL dans le CSV ---
+        local ts
+        ts=$(date +%Y-%m-%dT%H:%M:%S)
+        local agent_label
+        agent_label=$(echo "$AGENT_CMD" | awk '{print $1}' | xargs basename 2>/dev/null || echo "$AGENT_CMD" | cut -c1-30)
+        echo "${ts},${agent_label},all,${total_passed}/${total_checks},${total_passed},${total_checks},${total_elapsed}" >> "$RESULTS_CSV"
 
         # Retour sur main
         git checkout main 2>/dev/null
