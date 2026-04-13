@@ -1,0 +1,661 @@
+==============================================================================
+  AI AGENT BENCHMARK — DOCUMENTATION COMPLÈTE
+==============================================================================
+
+  Ce fichier documente intégralement le projet : architecture, challenges,
+  validators, scripts agents, et mode d'emploi complet.
+
+==============================================================================
+  1. VUE D'ENSEMBLE
+==============================================================================
+
+Ce repo est un benchmark pour mesurer la performance d'agents IA (Claude Code,
+Copilot, opencode, aider...) sur des tâches réalistes de data engineering.
+
+Principe :
+  - Chaque challenge est une branche Git isolée
+  - La branche contient un TASK.md (les consignes pour l'agent)
+  - L'agent lit TASK.md, modifie les fichiers, et on valide automatiquement
+  - Les validators (validate_challengeN.py) vivent dans main et vérifient
+    les fichiers de la branche active via os.getcwd()
+
+Challenges disponibles :
+  2 - Replace Hardcoded Credentials       (challenge/hardcoded-creds)
+  3 - Refactoring Pipeline Monolithique   (challenge/monolith-pipeline)
+  4 - Checkpointing Pipeline              (challenge/add-checkpointing)
+  5 - Module Qualité de Données           (challenge/data-quality)
+  6 - Rétrodocumentation                  (challenge/retrodoc)
+  7 - Mapping Codebase                    (challenge/mapping)
+  8 - Debugging (4 bugs)                  (challenge/debugging)
+  9 - Pipeline Pandas (bugs silencieux)   (challenge/pandas-pipeline)
+
+  Note : challenge 1 (merge conflict) est manuel, non automatisé.
+
+
+==============================================================================
+  2. PRÉREQUIS
+==============================================================================
+
+  - Git
+  - Python 3.8+
+  - Claude CLI : npm install -g @anthropic-ai/claude-code
+                 ou brew install claude
+  - Packages Python : pip install openai python-dotenv pandas
+
+Pour les agents alternatifs (optionnel) :
+  - aider   : pip install aider-chat
+  - opencode: voir https://github.com/sst/opencode
+
+
+==============================================================================
+  3. STRUCTURE DU REPO (branche main)
+==============================================================================
+
+  run_benchmark.sh          Script principal — orchestre tout
+  validate_challenge2.py    Validator challenge 2 (hardcoded creds)
+  validate_challenge3.py    Validator challenge 3 (monolith refactor)
+  validate_challenge4.py    Validator challenge 4 (checkpointing)
+  validate_challenge5.py    Validator challenge 5 (data quality)
+  validate_challenge6.py    Validator challenge 6 (retrodoc)
+  validate_challenge7.py    Validator challenge 7 (mapping)
+  validate_challenge8.py    Validator challenge 8 (debugging)
+  validate_challenge9.py    Validator challenge 9 (pandas pipeline)
+  cline_agent.py            Agent custom (boucle agentique via OpenAI API)
+  copilot_agent.py          Agent GitHub Copilot (one-shot via API)
+  README.md                 Résumé rapide
+
+  Chaque branche challenge contient en plus :
+  TASK.md                   Consignes pour l'agent
+  src/                      Fichiers source à modifier
+  data/                     Données utilisées par les pipelines
+
+
+==============================================================================
+  4. LANCER UN BENCHMARK
+==============================================================================
+
+  Depuis la racine du repo (branche main) :
+
+  # Un seul challenge avec Claude Code (défaut)
+  ./run_benchmark.sh 3
+
+  # Tous les challenges en séquence
+  ./run_benchmark.sh all
+
+  # Avec un agent custom
+  ./run_benchmark.sh 3 "aider --message 'Lis TASK.md et résous le challenge'"
+  ./run_benchmark.sh 3 "opencode run 'Lis TASK.md et résous le challenge'"
+
+  Donner les permissions d'exécution si besoin :
+  chmod +x run_benchmark.sh
+
+
+Ce que fait run_benchmark.sh pour chaque challenge :
+
+  1. Copie les validators et scripts agents dans un dossier temporaire
+     (AGENT_TMPDIR = mktemp -d) AVANT tout git checkout — les validators
+     doivent survivre aux changements de branche.
+
+  2. Checkout la branche du challenge (ex: challenge/monolith-pipeline)
+
+  3. Sauvegarde le commit initial : initial_commit=$(git rev-parse HEAD)
+
+  4. Lance l'agent (eval de la commande)
+
+  5. Lance le validator depuis AGENT_TMPDIR :
+     python3 /tmp/tmpXXXXXX/validate_challengeN.py
+
+  6. Parse le score dans la sortie du validator (format "Résultat: X/Y" ou
+     lignes [PASS]/[FAIL])
+
+  7. Remet la branche à son état initial :
+     git reset --hard "$initial_commit"   # annule les commits de l'agent
+     git clean -fd                         # supprime les nouveaux fichiers
+     git checkout main
+
+  Pourquoi git reset --hard et pas git checkout -- . ?
+  Les agents (Claude, opencode) font des commits. git checkout -- . ne
+  reverte que les fichiers non commités. git reset --hard reverte aussi
+  les commits.
+
+
+==============================================================================
+  5. ARCHITECTURE TECHNIQUE DES VALIDATORS
+==============================================================================
+
+Les validators utilisent os.getcwd() (et non os.path.dirname(__file__))
+pour construire les chemins vers les fichiers à vérifier.
+
+Pourquoi : les validators sont copiés dans AGENT_TMPDIR avant exécution.
+Si on utilisait __file__, les chemins pointeraient vers /tmp/tmpXXXX/
+au lieu du repo. os.getcwd() pointe toujours vers la racine du repo
+(cd "$BENCH_DIR" est fait au début de run_benchmark.sh).
+
+Deux méthodes d'analyse dans les validators :
+
+  A) Analyse statique par regex / lecture de texte
+     Cherche des patterns dans le code source sans l'exécuter.
+     Utilisé pour : présence de mots-clés, sections, noms de variables.
+     Avantage : rapide, pas besoin d'importer le code.
+
+  B) Analyse AST (Abstract Syntax Tree)
+     Parse le fichier Python avec ast.parse() et inspecte la structure
+     du code (fonctions, classes, docstrings, arguments...).
+     Utilisé pour : vérification de docstrings, types d'arguments,
+     présence de raise, structure des fonctions.
+     Avantage : précis, insensible au formatage, pas d'exécution.
+
+  C) Exécution directe
+     Importe le module et appelle les fonctions pour vérifier les résultats.
+     Utilisé dans : challenge 8 (debugging), challenge 9 (pandas pipeline).
+     Avantage : vérifie le comportement réel, pas juste la structure.
+
+
+==============================================================================
+  6. CHALLENGES — DÉTAIL COMPLET
+==============================================================================
+
+------------------------------------------------------------------------------
+  CHALLENGE 2 — Replace Hardcoded Credentials
+  Branche : challenge/hardcoded-creds
+  Difficulté : ⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  4 fichiers Python contiennent des credentials écrites en dur (passwords,
+  API keys, tokens AWS, webhook URL). C'est une faille de sécurité majeure.
+
+Fichiers à modifier :
+  src/db_connector.py    — password et credentials PostgreSQL
+  src/api_client.py      — API key et API secret
+  src/cloud_storage.py   — AWS access key et secret key
+  src/notification.py    — Slack webhook URL et SMTP password
+
+Ce que l'agent doit faire :
+  - Remplacer toutes les credentials par os.getenv("NOM_VARIABLE")
+  - Créer .env.example avec les noms de variables (sans les valeurs)
+  - S'assurer que .gitignore exclut .env
+  - Lever une exception si une variable requise est None
+
+Checks du validator (8 checks, résultat PASS/FAIL par check) :
+  1. Aucune credential hardcodée dans le code
+     Cherche les patterns exacts : "SuperSecret123!", "sk-proj-a8f3k...",
+     "AKIAIOSFODNN7EXAMPLE", etc.
+  2. .env.example existe et contient DB_PASSWORD, API_KEY,
+     AWS_ACCESS_KEY, SLACK_WEBHOOK
+  3. .gitignore contient ".env"
+  4. Chaque fichier utilise dotenv, os.environ, ou os.getenv
+  5. Si dotenv est importé, load_dotenv() est explicitement appelé
+     (seulement vérifié si "dotenv" apparaît dans le fichier)
+  6. Pas de valeur par défaut hardcodée dans os.getenv("VAR", "valeur")
+  7. Au moins un fichier lève une exception si une variable est manquante
+     (raise ValueError/RuntimeError/EnvironmentError/KeyError, ou assert)
+  8. Syntaxe Python valide (ast.parse sur chaque fichier)
+
+Trois approches valides pour charger les variables :
+  - from dotenv import load_dotenv + load_dotenv() + os.getenv("VAR")
+  - os.environ["VAR"]
+  - os.getenv("VAR")  (sans valeur par défaut hardcodée)
+
+------------------------------------------------------------------------------
+  CHALLENGE 3 — Refactoring Pipeline Monolithique
+  Branche : challenge/monolith-pipeline
+  Difficulté : ⭐⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  src/pipeline.py contient ~300 lignes dans une seule fonction run_pipeline().
+  C'est un "God Function" : impossible à tester unitairement, difficile à
+  maintenir, pas réutilisable.
+
+Ce que l'agent doit faire :
+  - Supprimer src/pipeline.py
+  - Créer le package src/pipeline/ avec 4 fichiers :
+      __init__.py    — orchestrateur, expose run_pipeline()
+      extract.py     — steps 1-3 : découverte fichiers, parse CSV, parse JSON
+      transform.py   — steps 4-8 : merge, dedup, clean, validate, enrich
+      load.py        — steps 9-10 : agrégation stats, écriture fichiers output
+
+Architecture des steps du pipeline original :
+  Step 1 : Discover source files (os.walk sur input_dir)
+  Step 2 : Parse CSV (csv.DictReader)
+  Step 3 : Parse JSON (json.load)
+  Step 4 : Merge all records (csv_records + json_records)
+  Step 5 : Dedup (hash MD5 de chaque record sérialisé en JSON)
+  Step 6 : Clean (normalise clés et valeurs, "null"/"n/a" → None, str → int/float)
+  Step 7 : Validate (vérifie que id, timestamp, value sont présents)
+  Step 8 : Enrich (ajoute _date, _hour, _day_of_week, _is_weekend, _value_bucket)
+  Step 9 : Aggregate stats (comptages par date/bucket/source, min/max/mean)
+  Step 10: Write output (enriched_data.json, invalid_records.json, pipeline_stats.json, manifest.json)
+
+Checks du validator (nombre variable selon les fonctions créées) :
+  1. src/pipeline.py n'existe plus (ou est un dossier)
+  2. src/pipeline/__init__.py existe
+  3. src/pipeline/extract.py existe
+  4. src/pipeline/transform.py existe
+  5. src/pipeline/load.py existe
+  6. __init__.py importe ou expose run_pipeline
+  7. extract.py contient les concepts d'extraction (csv, json, source)
+  8. transform.py contient les concepts de transformation (dedup/clean/validate)
+  9. load.py contient les concepts de chargement (write/output/json.dump)
+  10. Logging présent dans le code
+  11. Syntaxe valide pour chaque fichier
+
+------------------------------------------------------------------------------
+  CHALLENGE 4 — Checkpointing Pipeline
+  Branche : challenge/add-checkpointing
+  Difficulté : ⭐⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  src/long_pipeline.py est un pipeline en 10 étapes sans mémoire.
+  Si l'étape 7 plante, le prochain lancement recommence depuis l'étape 1.
+
+Ce que l'agent doit faire :
+  Ajouter un système de checkpointing :
+  - Après chaque étape réussie → sauvegarder l'état en JSON sur disque
+  - Au démarrage → détecter un checkpoint existant et reprendre
+  - Après succès complet → supprimer les checkpoints
+  - Option force_restart=True → ignorer les checkpoints
+
+Comportement attendu :
+  Run 1 : étapes 1→2→3→4→5→6→7 CRASH
+          → checkpoints/run_id_step1.json ... run_id_step6.json créés
+  Run 2 : détecte checkpoint à l'étape 6
+          → saute 1-6, reprend à 7→8→9→10
+          → supprime tous les checkpoints
+
+Format d'un checkpoint JSON :
+  {
+    "run_id": "abc123",
+    "last_completed_step": 6,
+    "context": { ... état du pipeline ... }
+  }
+
+Checks du validator (8 checks) :
+  1. Un module ou classe de checkpointing existe dans src/
+  2. Les checkpoints sont sauvegardés après chaque étape
+     (cherche json.dump, save_checkpoint, write_checkpoint dans le code)
+  3. Le pipeline détecte et charge un checkpoint existant
+     (cherche json.load, load_checkpoint, read_checkpoint)
+  4. Les checkpoints sont nettoyés après succès
+     (cherche os.remove, cleanup, delete_checkpoint)
+  5. Un dossier dédié est référencé pour les checkpoints
+     (cherche "checkpoints/", checkpoint_dir, "./checkpoint")
+  6. Un flag force_restart ou force_restart=True existe
+  7. Le context/state est sérialisé/désérialisé sans erreur
+  8. Syntaxe Python valide
+
+------------------------------------------------------------------------------
+  CHALLENGE 5 — Module de Qualité de Données
+  Branche : challenge/data-quality
+  Difficulté : ⭐⭐⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  Le pipeline traite des données sans vérification de qualité.
+  L'agent doit créer un module complet from scratch.
+
+Architecture cible :
+  src/data_quality/
+    __init__.py
+    profiler.py       — calculs statistiques (nulls, cardinality, distribution)
+    report.py         — génération rapport JSON structuré
+    quality_gate.py   — comparaison stats vs seuils → pass/fail
+    config.py         — lecture du fichier de config (optionnel)
+  config/
+    quality_thresholds.json   — seuils configurables
+
+Flux d'utilisation :
+  thresholds = config.load()            → {"max_null_percentage": 10, ...}
+  stats = profiler.profile(dataframe)   → {"null_percentage": 15, ...}
+  quality_gate.check(stats, thresholds) → 15 > 10 → FAIL, pipeline bloqué
+
+Seuils attendus dans quality_thresholds.json :
+  max_null_percentage      — % max de nulls par colonne (défaut: 10)
+  min_completeness         — complétude minimale (défaut: 90)
+  max_duplicate_percentage — % max de doublons (défaut: 5)
+  anomaly_threshold        — nb écarts-types pour anomalie (défaut: 3)
+
+Checks du validator (environ 10-12 checks) :
+  1. src/data_quality/__init__.py existe
+  2. src/data_quality/profiler.py existe
+  3. src/data_quality/report.py existe
+  4. src/data_quality/quality_gate.py existe
+  5. profiler.py contient calculs de nulls (null, missing, isna)
+  6. profiler.py contient calculs de cardinality (unique, distinct)
+  7. profiler.py contient calculs de distribution (min, max, mean, std)
+  8. report.py génère du JSON (json.dump présent)
+  9. report.py a une fonction generate/report
+  10. quality_gate.py compare des valeurs à des seuils (if/threshold/limit)
+  11. Fichier config/ existe avec les 4 clés attendues
+  12. Config contient max_null_percentage, min_completeness,
+      max_duplicate_percentage, anomaly_threshold
+  13. Rapport JSON contient timestamp, total_records, columns, quality_score
+  14. Syntaxe valide
+
+  Note : config.py n'est PAS dans les expected files — la logique de chargement
+  peut être directement dans quality_gate.py.
+
+------------------------------------------------------------------------------
+  CHALLENGE 6 — Rétrodocumentation
+  Branche : challenge/retrodoc
+  Difficulté : ⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  4 fichiers Python fonctionnels mais sans aucune documentation.
+
+Fichiers à documenter :
+  src/data_loader.py      — chargement et validation de données
+  src/transformer.py      — transformations et agrégations de DataFrames
+  src/exporter.py         — export CSV, JSON, Parquet
+  src/pipeline_runner.py  — orchestration de pipeline
+
+Format attendu (Google docstring) :
+  def ma_fonction(param1, param2):
+      """Description courte.
+
+      Args:
+          param1 (str): description du paramètre
+          param2 (int): description du paramètre
+
+      Returns:
+          dict: description du retour
+
+      Raises:
+          ValueError: si param1 est vide
+      """
+
+Checks du validator (nombre variable selon le code) :
+  Pour chaque fichier :
+  - Syntaxe Python valide (ast.parse)
+  - Module docstring présent
+  Pour chaque classe :
+  - Docstring de classe présent
+  - Section "Attributes:" dans le docstring
+  - Si __init__ a des paramètres : docstring __init__ présent
+  - Args typés dans __init__ (format "param (type):")
+  Pour chaque fonction non-dunder (hors __init__) :
+  - Docstring présent
+  - Si la fonction a des paramètres : section Args: avec types
+  - Section Returns: avec type (format "type: description")
+  - Si la fonction lève des exceptions : section Raises: présente
+
+  Le nombre total de checks est dynamique — il dépend du nombre de
+  fonctions/classes dans chaque fichier.
+
+Regex utilisés :
+  Args typés    : \w+\s*\(.*\)\s*:   → "param (str):"
+  Returns typé  : \w.*:               → "dict: description"
+  Raises section: Raises:             → présence du mot-clé
+
+------------------------------------------------------------------------------
+  CHALLENGE 7 — Mapping Codebase
+  Branche : challenge/mapping
+  Difficulté : ⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  Une codebase de 6 modules sans documentation de structure.
+
+Ce que l'agent doit produire :
+  MAPPING.md à la racine du repo, avec 5 sections obligatoires.
+
+Fichiers à analyser :
+  config/settings.py
+  src/models.py
+  src/ingestion.py
+  src/transform.py
+  src/export.py
+  src/orchestrator.py
+
+Contenu attendu dans MAPPING.md :
+  ## Modules      — 6 fichiers avec description et dépendances
+  ## Classes      — 8 classes : Record, BatchResult, PipelineState,
+                    IngestionPipeline, TransformChain, ReportGenerator,
+                    PipelineOrchestrator, PipelineConfig
+  ## Fonctions    — 11 fonctions standalone : read_csv_source, read_json_source,
+                    parse_records, clean_dataframe, normalize_columns,
+                    apply_transformations, add_features, write_csv, write_json,
+                    write_parquet, run_pipeline
+  ## Dépendances  — graphe des imports internes (format "module_a -> module_b")
+  ## Point d'entrée — PipelineOrchestrator et/ou run_pipeline
+
+Checks du validator :
+  1. MAPPING.md existe
+  2-6. Les 5 sections sont présentes (## Modules, ## Classes, ## Fonctions,
+       ## Dépendances, ## Point...)
+  7-12. Les 6 modules sont mentionnés
+  13-20. Les 8 classes sont mentionnées
+  21-31. Les 11 fonctions sont mentionnées
+  32-34. 3 méthodes clés documentées : PipelineOrchestrator.run,
+         PipelineOrchestrator.setup, IngestionPipeline.ingest,
+         IngestionPipeline.load, PipelineConfig.validate, PipelineConfig.from_dict
+  35. ≥90% des dépendances internes documentées (8 sur 9 minimum)
+  36. Au moins un point d'entrée identifié
+
+  Les dépendances sont cherchées avec des patterns flexibles :
+  - "ingestion -> models" (flèche)
+  - les deux modules dans la même ligne
+
+------------------------------------------------------------------------------
+  CHALLENGE 8 — Debugging (4 bugs)
+  Branche : challenge/debugging
+  Difficulté : ⭐⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  4 fichiers Python, chacun avec un type de bug différent.
+
+Fichier 1 — src/bug_type_error.py
+  Bug : opérations de type incompatibles (list/array/Series mélangés)
+  Point d'entrée : run_analysis()
+  Attendu : dict avec big_sales (floats > 200), summary (liste de dicts),
+            top_category ("A", "B" ou "C")
+
+Fichier 2 — src/bug_infinite_loop.py
+  Bug : boucle qui ne converge pas / condition de sortie jamais atteinte
+  Point d'entrée : run_all_tasks()
+  Attendu : termine en < 5 secondes, retourne dict avec résultats de 3 tâches
+
+Fichier 3 — src/bug_wrong_path.py
+  Bug : chemins de fichiers incorrects (ex: cherche .csv mais fichier est .tsv,
+        ou chemin relatif incorrect)
+  Point d'entrée : process_files()
+  Attendu : dict avec status "ok", tous les fichiers de data/ chargés
+
+Fichier 4 — src/bug_slow_code.py
+  Bug : code Python pur là où des opérations vectorisées pandas/numpy
+        seraient nécessaires (boucle sur 100k lignes)
+  Point d'entrée : run_analysis(100_000)
+  Attendu : résultats numériquement corrects en < 2 secondes
+
+Checks du validator :
+  Pour chaque fichier : import + exécution du point d'entrée, vérification
+  du type et des valeurs retournées, vérification du timing pour les
+  fichiers 2 et 4.
+  Total : environ 12 checks (3 par fichier).
+
+  Note : le validator exécute réellement le code — contrairement aux autres
+  challenges qui font de l'analyse statique.
+
+  Dépendances requises : pandas, numpy (pip install pandas numpy)
+
+------------------------------------------------------------------------------
+  CHALLENGE 9 — Pipeline Pandas (bugs silencieux)
+  Branche : challenge/pandas-pipeline
+  Difficulté : ⭐⭐⭐
+------------------------------------------------------------------------------
+
+Situation initiale :
+  src/sales_analysis.py s'exécute sans erreur mais retourne des résultats faux.
+  3 bugs silencieux (pas d'exception, juste de mauvaises valeurs).
+
+Données :
+  data/orders.csv    — 10 commandes (completed/cancelled/refunded, avec discount)
+  data/products.csv  — 5 produits avec catégories et prix
+  data/customers.csv — 4 clients avec région
+
+Les 3 bugs :
+  Bug 1 : prix calculé sans appliquer le discount
+          → qty * price au lieu de qty * price * (1 - discount)
+  Bug 2 : top_category retourne le minimum au lieu du maximum
+          → sort_values().index[0] retourne le premier après tri ascendant
+            (= le minimum), il faut sort_values(ascending=False).index[0]
+  Bug 3 : monthly_revenue perd l'année
+          → dt.month retourne un int (1-12), il faut dt.to_period("M")
+            ou strftime("%Y-%m") pour avoir le format "YYYY-MM"
+
+Métriques vérifiées :
+  total_revenue     — valeur exacte (avec math.isclose, tolérance 1%)
+  revenue_by_region — dict région → montant (math.isclose par valeur)
+  top_category      — string exacte
+  avg_order_value   — valeur exacte (math.isclose)
+  monthly_revenue   — dict "YYYY-MM" → montant (format clé vérifié)
+
+Checks du validator :
+  1. run_analysis() s'exécute sans exception
+  2. total_revenue correct
+  3. revenue_by_region correct (toutes les régions)
+  4. top_category correct
+  5. avg_order_value correct
+  6. monthly_revenue : format des clés "YYYY-MM" (détecte le bug dt.month)
+  7. monthly_revenue : valeurs correctes
+
+
+==============================================================================
+  7. AGENTS DISPONIBLES
+==============================================================================
+
+  Par défaut (Claude Code) :
+  claude -p "Lis TASK.md et résous le challenge décrit dedans."
+         --allowedTools "Edit,Write,Read,Glob,Grep,Bash"
+
+  Claude lit TASK.md, explore la codebase, modifie les fichiers, commit.
+  C'est l'agent de référence.
+
+  cline_agent.py — boucle agentique custom via OpenAI API
+  Simule le comportement de Cline (VS Code extension).
+  Outils disponibles : read_file, write_file, list_files.
+  Jusqu'à 10 itérations avant arrêt forcé.
+
+  Usage :
+    OPENAI_API_KEY=sk-xxx \
+    OPENAI_API_BASE=https://api.openai.com/v1 \
+    CLINE_MODEL=gpt-4o \
+    python3 cline_agent.py
+
+  Appel dans run_benchmark.sh :
+    ./run_benchmark.sh 3 "OPENAI_API_KEY=sk-xxx python3 cline_agent.py"
+
+  copilot_agent.py — one-shot via GitHub Copilot API
+  Récupère le token via `gh auth token`, envoie tout le contexte en une
+  seule requête et attend les fichiers modifiés dans un format structuré.
+  Pas de boucle agentique — une seule requête.
+
+  Format de réponse attendu :
+    === FILE: src/mon_fichier.py ===
+    <contenu complet>
+    === END FILE ===
+
+  Usage :
+    gh auth login  # une seule fois
+    COPILOT_MODEL=gpt-4o python3 copilot_agent.py
+
+  Agents externes (non inclus) :
+    aider  : pip install aider-chat
+             aider --message "Lis TASK.md et résous le challenge"
+    opencode: opencode run "Lis TASK.md et résous le challenge"
+
+
+==============================================================================
+  8. AJOUTER UN NOUVEAU CHALLENGE
+==============================================================================
+
+  1. Créer la branche depuis un commit propre :
+     git checkout -b challenge/mon-challenge
+
+  2. Mettre en place les fichiers source (avec les bugs/problèmes)
+
+  3. Créer TASK.md avec : objectif, fichiers concernés, critères de validation
+
+  4. Revenir sur main et créer validate_challengeN.py
+     Le validator doit utiliser os.getcwd() (pas __file__) pour les chemins.
+
+  5. Ajouter dans run_benchmark.sh :
+     - Dans le case block : run_challenge N "challenge/mon-challenge" ...
+     - Dans le mode "all" : branches[N], validators[N], names[N]
+     - Dans la boucle for : inclure N
+
+  6. Supprimer le validator de la branche challenge si vous l'y avez mis :
+     git checkout challenge/mon-challenge
+     git rm validate_challengeN.py
+     git commit -m "clean: validator in main only"
+
+
+==============================================================================
+  9. REMETTRE UNE BRANCHE À ZÉRO
+==============================================================================
+
+  Si un agent a commité sur la branche et l'a polluée, pour revenir
+  au commit initial du challenge :
+
+  git log --oneline challenge/mon-challenge
+  # Identifier le hash du commit initial (avant les commits de l'agent)
+  git checkout challenge/mon-challenge
+  git reset --hard <hash_commit_initial>
+  git clean -fd
+  git checkout main
+
+  Note : run_benchmark.sh fait ça automatiquement après chaque run.
+  Ce reset manuel est utile si une session a été interrompue.
+
+
+==============================================================================
+  10. RÉSULTATS ET INTERPRÉTATION
+==============================================================================
+
+  Format de sortie run_benchmark.sh :
+
+    ==========================================
+    BENCHMARK RESULTS
+    ==========================================
+      #    Challenge                Score
+      ---- ------------------------ --------
+      2    Hardcoded Credentials    8/8
+      3    Monolith Pipeline        9/11
+      4    Add Checkpointing        6/8
+      ...
+      ---- ------------------------ --------
+           TOTAL                    45/60
+    ==========================================
+
+  Couleurs :
+    Vert   = score parfait (toutes les checks passées)
+    Jaune  = score partiel
+    Rouge  = 0 check passé
+
+  Le nombre de checks varie selon les challenges :
+    Challenge 2 : 8 checks fixes
+    Challenge 3 : variable (~10-12, dépend du code produit)
+    Challenge 4 : 8 checks fixes
+    Challenge 5 : ~12 checks fixes
+    Challenge 6 : variable (dépend du nombre de fonctions/classes)
+    Challenge 7 : ~36 checks fixes
+    Challenge 8 : ~12 checks fixes
+    Challenge 9 : 7 checks fixes
+
+  Interprétation :
+    Score 0 sur tous les challenges → l'agent n'a probablement pas tourné
+    (vérifier PATH de l'agent, OPENAI_API_KEY, erreurs dans le terminal)
+
+    Score partiel sur challenge 6 → normal, le nombre de checks est dynamique
+    et varie selon la richesse de la documentation produite
+
+    Score parfait sur data-quality sans avoir fait tourner d'agent → vérifier
+    que la branche challenge/data-quality est propre (les fichiers src/data_quality/
+    ne doivent pas être pré-commités)
+
+
+==============================================================================
