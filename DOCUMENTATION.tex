@@ -114,19 +114,16 @@ Copilot, opencode, aider\ldots) sur des tâches réalistes de data engineering.
   \toprule
   \# & Titre & Branche \\
   \midrule
-  2 & Replace Hardcoded Credentials     & \code{challenge/hardcoded-creds} \\
-  3 & Refactoring Pipeline Monolithique & \code{challenge/monolith-pipeline} \\
-  4 & Checkpointing Pipeline            & \code{challenge/add-checkpointing} \\
-  5 & Module Qualité de Données         & \code{challenge/data-quality} \\
-  6 & Rétrodocumentation                & \code{challenge/retrodoc} \\
-  7 & Mapping Codebase                  & \code{challenge/mapping} \\
-  8 & Debugging (4 bugs)                & \code{challenge/debugging} \\
-  9 & Pipeline Pandas (bugs silencieux) & \code{challenge/pandas-pipeline} \\
+  1 & Replace Hardcoded Credentials     & \code{challenge/hardcoded-creds} \\
+  2 & Refactoring Pipeline Monolithique & \code{challenge/monolith-pipeline} \\
+  3 & Checkpointing Pipeline            & \code{challenge/add-checkpointing} \\
+  4 & Module Qualité de Données         & \code{challenge/data-quality} \\
+  5 & Rétrodocumentation                & \code{challenge/retrodoc} \\
+  6 & Mapping Codebase                  & \code{challenge/mapping} \\
+  7 & Pipeline Pandas (bugs silencieux) & \code{challenge/pandas-pipeline} \\
   \bottomrule
 \end{tabular}
 \end{center}
-
-\textit{Note : le challenge 1 (merge conflict) est manuel et non automatisé.}
 
 % =============================================================================
 \section{Prérequis}
@@ -157,8 +154,7 @@ validate_challenge4.py    Validator challenge 4 (checkpointing)
 validate_challenge5.py    Validator challenge 5 (data quality)
 validate_challenge6.py    Validator challenge 6 (retrodoc)
 validate_challenge7.py    Validator challenge 7 (mapping)
-validate_challenge8.py    Validator challenge 8 (debugging)
-validate_challenge9.py    Validator challenge 9 (pandas pipeline)
+validate_challenge9.py    Validator challenge 7 (pandas pipeline)
 cline_agent.py            Agent custom (boucle agentique via OpenAI API)
 copilot_agent.py          Agent GitHub Copilot (one-shot via API)
 README.md                 Resume rapide
@@ -252,7 +248,7 @@ Avantage : précis, insensible au formatage, pas d'exécution.
 \textbf{C) Exécution directe}
 
 Importe le module et appelle les fonctions pour vérifier les résultats.
-Utilisé dans : challenge 8 (debugging), challenge 9 (pandas pipeline).
+Utilisé dans : challenge 7 (pandas pipeline).
 Avantage : vérifie le comportement réel, pas juste la structure.
 
 % =============================================================================
@@ -260,7 +256,7 @@ Avantage : vérifie le comportement réel, pas juste la structure.
 % =============================================================================
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 2 — Replace Hardcoded Credentials}
+\subsection{Challenge 1 — Replace Hardcoded Credentials}
 \textit{Branche :} \code{challenge/hardcoded-creds} \quad \textit{Difficulté : ★★}
 
 \textbf{Situation initiale :}
@@ -313,7 +309,7 @@ val = os.getenv("MA_VAR")   # sans valeur par defaut hardcodee
 \end{lstlisting}
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 3 — Refactoring Pipeline Monolithique}
+\subsection{Challenge 2 — Refactoring Pipeline Monolithique}
 \textit{Branche :} \code{challenge/monolith-pipeline} \quad \textit{Difficulté : ★★★}
 
 \textbf{Situation initiale :}
@@ -362,7 +358,7 @@ src/
 \end{enumerate}
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 4 — Checkpointing Pipeline}
+\subsection{Challenge 3 — Checkpointing Pipeline}
 \textit{Branche :} \code{challenge/add-checkpointing} \quad \textit{Difficulté : ★★★}
 
 \textbf{Situation initiale :}
@@ -410,7 +406,7 @@ run_long_pipeline()  # -> resumes from step 7, skips 1-6
 \end{enumerate}
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 5 — Module de Qualité de Données}
+\subsection{Challenge 4 — Module de Qualité de Données}
 \textit{Branche :} \code{challenge/data-quality} \quad \textit{Difficulté : ★★★★}
 
 \textbf{Situation initiale :}
@@ -468,7 +464,7 @@ quality_gate.check(stats, thresholds)  # 15 > 10 -> FAIL, pipeline bloque
 peut être directement dans \code{quality\_gate.py}.}
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 6 — Rétrodocumentation}
+\subsection{Challenge 5 — Rétrodocumentation}
 \textit{Branche :} \code{challenge/retrodoc} \quad \textit{Difficulté : ★★}
 
 \textbf{Situation initiale :}
@@ -523,7 +519,7 @@ Pour chaque fonction (hors dunders) :
 \end{itemize}
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 7 — Mapping Codebase}
+\subsection{Challenge 6 — Mapping Codebase}
 \textit{Branche :} \code{challenge/mapping} \quad \textit{Difficulté : ★★}
 
 \textbf{Situation initiale :}
@@ -571,33 +567,7 @@ Une codebase de 6 modules sans documentation de structure.
 \end{enumerate}
 
 % ------------------------------------------------------------------------------
-\subsection{Challenge 8 — Debugging (4 bugs)}
-\textit{Branche :} \code{challenge/debugging} \quad \textit{Difficulté : ★★★}
-
-\textbf{Situation initiale :} 4 fichiers Python, chacun avec un type de bug différent.
-
-\begin{center}
-\begin{tabular}{lll}
-  \toprule
-  Fichier & Type de bug & Critère de succès \\
-  \midrule
-  \code{bug\_type\_error.py}    & Types incompatibles (list/array/Series) & Retourne le dict attendu \\
-  \code{bug\_infinite\_loop.py} & Boucle ne convergeant pas                & Termine en $< 5$ secondes \\
-  \code{bug\_wrong\_path.py}    & Chemin de fichier incorrect               & \code{status: "ok"} \\
-  \code{bug\_slow\_code.py}     & Code non vectorisé (boucle sur 100k lignes) & Correct en $< 2$ secondes \\
-  \bottomrule
-\end{tabular}
-\end{center}
-
-\textbf{Checks du validator ($\sim$12 checks) :}
-Pour chaque fichier : import + exécution du point d'entrée, vérification du
-type et des valeurs retournées, vérification du timing pour les fichiers 2 et 4.
-
-\textit{Note : le validator exécute réellement le code.
-Dépendances requises : \code{pip install pandas numpy}}
-
-% ------------------------------------------------------------------------------
-\subsection{Challenge 9 — Pipeline Pandas (bugs silencieux)}
+\subsection{Challenge 7 — Pipeline Pandas (bugs silencieux)}
 \textit{Branche :} \code{challenge/pandas-pipeline} \quad \textit{Difficulté : ★★★}
 
 \textbf{Situation initiale :}
@@ -768,14 +738,13 @@ Couleurs : vert = score parfait, jaune = partiel, rouge = 0.
   \toprule
   Challenge & Titre & Checks \\
   \midrule
-  2 & Hardcoded Credentials     & 8 (fixes) \\
-  3 & Monolith Pipeline         & $\sim$10--12 (variable) \\
-  4 & Add Checkpointing         & 8 (fixes) \\
-  5 & Data Quality              & $\sim$12--14 (fixes) \\
-  6 & Rétrodocumentation        & variable (dynamique) \\
-  7 & Mapping Codebase          & $\sim$36 (fixes) \\
-  8 & Debugging                 & $\sim$12 (fixes) \\
-  9 & Pandas Pipeline           & 7 (fixes) \\
+  1 & Hardcoded Credentials     & 8 (fixes) \\
+  2 & Monolith Pipeline         & $\sim$10--12 (variable) \\
+  3 & Add Checkpointing         & 8 (fixes) \\
+  4 & Data Quality              & $\sim$12--14 (fixes) \\
+  5 & Rétrodocumentation        & variable (dynamique) \\
+  6 & Mapping Codebase          & $\sim$36 (fixes) \\
+  7 & Pandas Pipeline           & 7 (fixes) \\
   \bottomrule
 \end{tabular}
 \end{center}
@@ -785,7 +754,7 @@ Couleurs : vert = score parfait, jaune = partiel, rouge = 0.
 \textbf{Score 0 sur tous les challenges} $\to$ l'agent n'a probablement pas tourné.
 Vérifier le PATH de l'agent, \code{OPENAI\_API\_KEY}, et les erreurs dans le terminal.
 
-\textbf{Score partiel sur challenge 6} $\to$ normal, le nombre de checks est
+\textbf{Score partiel sur challenge 5} $\to$ normal, le nombre de checks est
 dynamique et varie selon la richesse de la documentation produite.
 
 \textbf{Score parfait sur data-quality sans agent} $\to$ vérifier que la branche
