@@ -30,13 +30,6 @@ set +e  # On ne quitte PAS à la première erreur (les validateurs retournent ex
 # --- Argument 1 : numéro du challenge (1-5 ou "all") ---
 CHALLENGE=$1
 
-# --- Fichier de log CSV ---
-RESULTS_CSV="$BENCH_DIR/benchmark_results.csv"
-# Créer l'en-tête si le fichier n'existe pas encore
-if [ ! -f "$RESULTS_CSV" ]; then
-    echo "timestamp,agent,challenge,score,passed,total,duration_s" > "$RESULTS_CSV"
-fi
-
 # --- Argument 2 : commande pour lancer l'agent IA (optionnel) ---
 # Par défaut : Claude en mode non-interactif avec auto-accept de tous les outils
 DEFAULT_AGENT='claude -p "Lis TASK.md et résous le challenge décrit dedans. Modifie les fichiers nécessaires." --allowedTools "Edit,Write,Read,Glob,Grep,Bash"'
@@ -45,6 +38,13 @@ AGENT_CMD=${2:-$DEFAULT_AGENT}
 # --- Répertoire racine du benchmark (chemin absolu) ---
 BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$BENCH_DIR"  # Toujours exécuter depuis la racine du repo
+
+# --- Fichier de log CSV (défini après BENCH_DIR) ---
+RESULTS_CSV="$BENCH_DIR/benchmark_results.csv"
+# Créer l'en-tête si le fichier n'existe pas encore
+if [ ! -f "$RESULTS_CSV" ]; then
+    echo "timestamp,agent,challenge,score,passed,total,duration_s" > "$RESULTS_CSV"
+fi
 
 # --- Copie des scripts agent ET validators dans un dossier temp AVANT tout git checkout ---
 # (ces fichiers sont trackés sur main et disparaissent sur les branches challenge)
