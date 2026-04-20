@@ -9,9 +9,9 @@
   PRINCIPE :
   - La branche `main` contient le code de base (un projet de pipeline de données)
   - Chaque challenge vit dans sa propre branche Git
-  - Chaque branche contient un TASK.md (les consignes) et un validate_challengeN.py
-    (le script qui vérifie automatiquement si la solution est correcte)
-  - On demande à l'agent IA de résoudre le challenge, puis on lance le validateur
+  - Chaque branche contient un TASK.md (les consignes pour l'agent)
+  - Les scripts validate_challengeN.py vivent dans main (pas dans les branches challenge)
+  - On demande à l'agent IA de résoudre le challenge, puis on lance le validateur depuis main
 
   STRUCTURE DU REPO (branche main) :
   ├── config/settings.py        <- Configuration du pipeline (sera modifié par le challenge 1)
@@ -165,4 +165,4 @@ git checkout challenge/debugging
   Retourne exit code 0 = PASS, 1 = FAIL
 -->
 
-Chaque branche contient un script `validate_challengeN.py` qui vérifie les critères de réussite.
+Les scripts `validate_challengeN.py` sont dans la branche `main` et vérifient les critères de réussite de la branche active.
