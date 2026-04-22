@@ -195,20 +195,6 @@ reset_branch() {
 # DISPATCH : quel challenge lancer selon l'argument $1
 # =============================================================================
 case $CHALLENGE in
-    1)
-        # Le challenge 1 (merge conflict) est spécial : il faut merger
-        # deux branches manuellement, pas juste checkout une branche
-        echo "Challenge 1: Merge Conflict Resolution"
-        echo ""
-        echo "Ce challenge nécessite un setup manuel :"
-        echo "  1. git checkout main"
-        echo "  2. git merge feature/update-config    # OK, fast-forward"
-        echo "  3. git merge feature/refactor-config   # CONFLIT ici"
-        echo "  4. Lancer l'agent pour résoudre le conflit"
-        echo ""
-        echo "Ou en une commande :"
-        echo "  git checkout main && git merge feature/update-config && git merge feature/refactor-config; claude -p 'Résous le conflit de merge dans config/settings.py. Garde les valeurs de production ET les nouvelles sections monitoring/alerting.'"
-        ;;
     2)
         run_challenge 2 "challenge/hardcoded-creds" "$AGENT_TMPDIR/validate_challenge2.py"
         ;;
