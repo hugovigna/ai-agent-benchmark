@@ -27,7 +27,7 @@
   └── requirements.txt          <- Dépendances Python du projet
 -->
 
-Ce repo contient **9 challenges** pour évaluer la capacité d'un agent IA à résoudre des problèmes courants en data engineering.
+Ce repo contient **8 challenges** pour évaluer la capacité d'un agent IA à résoudre des problèmes courants en data engineering.
 
 ## Challenges
 
@@ -49,7 +49,6 @@ Ce repo contient **9 challenges** pour évaluer la capacité d'un agent IA à r�
 | 6 | **Rétrodocumentation** | `challenge/retrodoc` | ⭐⭐ |
 | 7 | **Mapping Codebase** | `challenge/mapping` | ⭐⭐ |
 | 8 | **Debugging (4 bugs)** | `challenge/debugging` | ⭐⭐⭐ |
-| 9 | **SQL Queries** | `challenge/sql-queries` | ⭐⭐ à ⭐⭐⭐⭐ |
 
 ## Comment utiliser
 
