@@ -216,9 +216,12 @@ case $CHALLENGE in
     8)
         run_challenge 8 "challenge/debugging" "$AGENT_TMPDIR/validate_challenge8.py"
         ;;
+    9)
+        run_challenge 9 "challenge/sql-queries" "$AGENT_TMPDIR/validate_challenge9.py"
+        ;;
     all)
         # --- Mode "all" : lance les challenges 2 à 9 en séquence ---
-        echo "Running all challenges (2-8)..."
+        echo "Running all challenges (2-9)..."
         echo ""
         passed=0
         failed=0
@@ -235,6 +238,7 @@ case $CHALLENGE in
             "challenge/retrodoc"           # index 6
             "challenge/mapping"            # index 7
             "challenge/debugging"          # index 8
+            "challenge/sql-queries"        # index 9
         )
         validators=(
             ""                                                  # index 0
@@ -246,14 +250,16 @@ case $CHALLENGE in
             "$AGENT_TMPDIR/validate_challenge6.py"              # index 6
             "$AGENT_TMPDIR/validate_challenge7.py"              # index 7
             "$AGENT_TMPDIR/validate_challenge8.py"              # index 8
+            "$AGENT_TMPDIR/validate_challenge9.py"              # index 9
         )
 
         declare -a names=(
             "" "" "Hardcoded Credentials" "Monolith Pipeline"
             "Add Checkpointing" "Data Quality"
             "Rétrodocumentation" "Mapping Codebase" "Debugging"
+            "SQL Queries"
         )
-        for i in 2 3 4 5 6 7 8; do
+        for i in 2 3 4 5 6 7 8 9; do
             reset_branch "${branches[$i]}"
             run_challenge $i "${branches[$i]}" "${validators[$i]}"
         done
@@ -314,7 +320,7 @@ case $CHALLENGE in
         echo "  6   - Rétrodocumentation"
         echo "  7   - Mapping Codebase"
         echo "  8   - Debugging (4 bugs)"
-        echo "  9   - Pandas Pipeline (silent bugs)"
+        echo "  9   - SQL Queries (JOIN, agrégation, text-to-SQL, qualité)"
         echo "  all - Run challenges 2-9 en séquence"
         echo ""
         echo "Exemples:"
