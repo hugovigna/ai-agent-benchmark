@@ -23,7 +23,9 @@ def get_github_token():
 
 def get_source_files():
     files = {}
-    for f in Path('.').rglob('*.py'):
+    for f in Path('.').rglob('*'):
+        if not f.is_file() or f.suffix not in ('.py', '.sql', '.md'):
+            continue
         if '.git' not in str(f):
             try:
                 files[str(f)] = f.read_text()
@@ -73,10 +75,11 @@ def main():
             {
                 "role": "system",
                 "content": (
-                    "Tu es un expert Python. On te donne une tâche et des fichiers source. "
-                    "Résous la tâche en modifiant les fichiers nécessaires.\n"
-                    "Réponds UNIQUEMENT avec les fichiers modifiés dans ce format exact :\n"
-                    "=== FILE: chemin/du/fichier.py ===\n"
+                    "Tu es un expert en développement logiciel (Python, SQL, etc.). "
+                    "On te donne une tâche et des fichiers existants. "
+                    "Résous la tâche en créant ou modifiant les fichiers nécessaires.\n"
+                    "Réponds UNIQUEMENT avec les fichiers dans ce format exact :\n"
+                    "=== FILE: chemin/du/fichier ===\n"
                     "<contenu complet du fichier>\n"
                     "=== END FILE ==="
                 )
